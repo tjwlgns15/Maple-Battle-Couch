@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('연무장 기록 분석')}"></head>
+<body>
+<main class="hero">
+    <h1>Battle Coach</h1>
+    <p class="muted">메이플스토리 연무장 기록을 조회하고 딜 사이클을 분석합니다.</p>
+    <form class="search-large" th:action="@{/search}" method="get">
+        <input type="text" name="characterName" placeholder="캐릭터명을 입력하세요" maxlength="12" required autofocus>
+        <button type="submit">검색</button>
+    </form>
+    <p class="muted small">넥슨 Open API 데이터는 평균 15분 뒤에 반영됩니다.</p>
+</main>
+</body>
+</html>

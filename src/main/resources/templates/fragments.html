@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' - Battle Coach'">Battle Coach</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:fragment="header" class="site-header">
+    <a class="brand" th:href="@{/}">Battle Coach</a>
+    <form class="search-inline" th:action="@{/search}" method="get">
+        <input type="text" name="characterName" placeholder="캐릭터명" maxlength="12" required
+               th:value="${characterName}">
+        <button type="submit">검색</button>
+    </form>
+</header>
+</body>
+</html>

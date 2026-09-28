@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(${characterName} + ' 연무장 기록')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main class="container">
+    <h1><span th:text="${characterName}">캐릭터</span> <span class="muted">연무장 기록</span></h1>
+
+    <p th:if="${#lists.isEmpty(replays)}" class="empty">등록된 연무장 기록이 없습니다.</p>
+
+    <table th:unless="${#lists.isEmpty(replays)}" class="table">
+        <thead>
+        <tr>
+            <th>기간</th>
+            <th>등록일</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="item : ${replays}">
+            <td th:text="${item.periodNo()} + '기'">1기</td>
+            <td th:text="${#temporals.format(item.registerDate(), 'yyyy-MM-dd')}">2026-08-06</td>
+            <td class="right"><a th:href="@{/replays/{id}(id=${item.replayId()})}">상세 보기</a></td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

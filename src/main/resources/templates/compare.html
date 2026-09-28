@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(${c.base().characterName()} + ' 비교')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main class="container" th:with="b=${c.base()}, t=${c.target()}, playSec=${c.base().totalPlayTimeMs() / 1000.0}">
+    <div class="page-actions">
+        <p class="breadcrumb">
+            <a th:href="@{/replays/{id}(id=${b.replayId()})}" th:text="|${b.characterName()} 기록으로 돌아가기|">돌아가기</a>
+        </p>
+        <a class="button-link" th:href="@{/compare/select(base=${b.replayId()})}">기준 기록 바꾸기</a>
+    </div>
+    <h1>기록 비교</h1>
+
+    <section class="versus">
+        <div class="card" th:each="side, it : ${ {b, t} }">
+            <h3>
+                <span class="role" th:text="${it.first} ? '내 기록' : '기준 기록'">내 기록</span>
+                <a th:href="@{/replays/{id}(id=${side.replayId()})}" th:text="${side.characterName()}">캐릭터</a>
+            </h3>
+            <dl>
+                <dt>직업</dt>
+                <dd th:text="|${side.characterClass()} · Lv.${side.characterLevel()}|">칼리 · Lv.288</dd>
+                <dt>등록일</dt>
+                <dd th:text="${#temporals.format(side.registerDate(), 'yyyy-MM-dd')}">2026-08-06</dd>
+                <dt>전투 시간</dt>
+                <dd th:text="${#numbers.formatDecimal(side.totalPlayTimeMs() / 1000.0, 1, 1)} + '초'">336.0초</dd>
+                <dt>DPS</dt>
+                <dd th:text="${@koreanNumberFormat.format(side.totalDps())}">1조</dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="panel diagnosis" th:with="d=${c.diagnosis()}">
+        <h2>진단</h2>
+        <p class="muted small">
+            내 기록 기준입니다. 손해는 내 평균 DPS로 몇 초 치인지(초 환산)로 나타내고, 1초 미만은 표시하지 않습니다.
+            기준 기록의 시전 수는 전투 시간 차이만큼 보정했습니다(배율 <span th:text="${#numbers.formatDecimal(c.playTimeScale(), 1, 3)}">1.000</span>).
+        </p>
+        <p th:if="${#lists.isEmpty(d.findings())}" class="empty-inline">1초 이상 손해가 나는 문제를 찾지 못했습니다.</p>
+        <th:block th:with="operation=${d.findings().?[type().category().name() == 'OPERATION']},
+                           loadout=${d.findings().?[type().category().name() == 'LOADOUT']}">
+            <th:block th:each="group, it : ${ {operation, loadout} }" th:unless="${#lists.isEmpty(group)}">
+                <h3 class="finding-group" th:text="${it.first} ? '운용 차이 (바로 고칠 수 있는 것)' : '구성·스펙 차이'">운용</h3>
+                <ol class="findings">
+                    <li th:each="f : ${group}">
+                        <div class="finding-head">
+                            <span class="badge" th:text="${f.type().label()}">시전 수 부족</span>
+                            <strong th:text="${f.skillName()}">스킬</strong>
+                            <span class="impact"
+                                  th:text="|${#numbers.formatDecimal(f.impactSeconds(), 1, 1)}초 (DPS의 ${#numbers.formatDecimal(f.impactSeconds() / playSec * 100, 1, 2)}%)|">2.6초</span>
+                        </div>
+                        <p th:text="${f.message()}">메시지</p>
+                    </li>
+                </ol>
+            </th:block>
+        </th:block>
+        <details th:unless="${#lists.isEmpty(d.notes())}" class="notes">
+            <summary th:text="|참고 ${#lists.size(d.notes())}건 (영향도를 계산할 수 없는 항목)|">참고</summary>
+            <ul>
+                <li th:each="n : ${d.notes()}">
+                    <span class="badge muted-badge" th:text="${n.type().label()}">미보유</span>
+                    <strong th:text="${n.skillName()}">스킬</strong>
+                    <span th:text="${n.message()}">메시지</span>
+                </li>
+            </ul>
+        </details>
+    </section>
+
+    <section class="panel">
+        <h2>첫 극딜 스킬 순서</h2>
+        <p class="muted small">
+            첫 극딜 구간 앞뒤에서 쿨 10초 이상 스킬을 처음 쓴 순서를 서열 정렬(Needleman-Wunsch)로 맞췄습니다.
+            강조된 칸은 한쪽 순서에만 그 자리에 있는 스킬로, 빠졌거나 순서가 다른 스킬입니다.
+        </p>
+        <p th:if="${#lists.isEmpty(c.burstOrder())}" class="empty-inline">극딜 구간을 찾지 못해 순서를 비교할 수 없습니다.</p>
+        <div class="table-scroll" th:unless="${#lists.isEmpty(c.burstOrder())}">
+            <table class="table compact align-table">
+                <thead>
+                <tr>
+                    <th class="right">#</th>
+                    <th>내 기록</th>
+                    <th>기준 기록</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="pair, it : ${c.burstOrder()}"
+                    th:with="match=${pair.status().name() == 'MATCH'}">
+                    <td class="right muted" th:text="${it.count}">1</td>
+                    <td th:classappend="${match} ? 'match' : (${pair.left()} != null ? 'only' : '')"
+                        th:text="${pair.left()} ?: ''">스킬</td>
+                    <td th:classappend="${match} ? 'match' : (${pair.right()} != null ? 'only' : '')"
+                        th:text="${pair.right()} ?: ''">스킬</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>스킬별 비교</h2>
+        <p class="muted small">
+            초 환산의 합은 전투 시간과 같아서, 한 스킬 비중이 오르면 다른 스킬 비중이 내려갑니다. 차이 자체를 손해로 읽으면 안 됩니다.
+            차이를 <b>시전 수 효과</b>(시전 수 차이 × 기준 1회 초 환산)와 <b>1회 효율 효과</b>(1회 초 환산 차이 × 내 시전 수)로 나눴습니다.
+            1회 효율은 스킬 레벨, 다른 스킬 레벨, 버프 겹침(극딜 정렬)이 함께 반영된 값입니다.
+        </p>
+        <div class="table-scroll">
+            <table class="table compact">
+                <thead>
+                <tr>
+                    <th>스킬</th>
+                    <th class="right">레벨<br><span class="muted small">나 / 기준</span></th>
+                    <th class="right">시전<br><span class="muted small">나 / 기준</span></th>
+                    <th class="right">초 환산<br><span class="muted small">나 / 기준(보정)</span></th>
+                    <th class="right">차이</th>
+                    <th class="right">시전 수 효과</th>
+                    <th class="right">1회 효율 효과</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${c.skills()}">
+                    <td th:text="${row.skillName()}">스킬</td>
+                    <td class="right" th:text="|${row.baseLevel() ?: '-'} / ${row.targetLevel() ?: '-'}|">30 / 30</td>
+                    <td class="right" th:text="|${row.baseCasts()} / ${row.targetCasts()}|">12 / 14</td>
+                    <td class="right"
+                        th:text="|${@timeFormat.decimal(row.baseSeconds())} / ${@timeFormat.decimal(row.targetSecondsScaled())}|">17.2 / 21.4</td>
+                    <td class="right strong"
+                        th:classappend="${row.differenceSeconds() >= 0} ? 'positive' : 'negative'"
+                        th:text="${@timeFormat.signed(row.differenceSeconds())}">-4.2</td>
+                    <td class="right"
+                        th:classappend="${row.castEffectSeconds() != null and row.castEffectSeconds() < -0.5} ? 'negative' : ''"
+                        th:text="${@timeFormat.signed(row.castEffectSeconds())}">-2.9</td>
+                    <td class="right"
+                        th:classappend="${row.efficiencyEffectSeconds() != null and row.efficiencyEffectSeconds() < -0.5} ? 'negative' : ''"
+                        th:text="${@timeFormat.signed(row.efficiencyEffectSeconds())}">-1.3</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>스킬 사용 타임라인</h2>
+        <p class="muted small">
+            스킬마다 한 줄에 두 기록을 겹쳐 그렸습니다. 줄 위쪽 원은 내 기록, 아래쪽 마름모는 기준 기록의 시전 시작 시각입니다.
+            같은 스킬을 쓴 시점이 가로로 얼마나 떨어져 있는지로 차이를 볼 수 있습니다.
+            노란 음영은 내 기록, 주황 음영은 기준 기록의 극딜 구간입니다. 범례를 누르면 한쪽만 볼 수 있고, Ctrl+휠로 확대할 수 있습니다.
+        </p>
+        <div id="compare-timeline" class="chart"></div>
+    </section>
+</main>
+
+<script id="compare-data" type="application/json" th:utext="${chartJson}"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script th:src="@{/js/charts.js}"></script>
+<script th:src="@{/js/compare.js}"></script>
+</body>
+</html>

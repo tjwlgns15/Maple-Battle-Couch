@@ -1,0 +1,38 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: battle-coach
+  config:
+    # 로컬 비밀값(gitignore 대상). 없으면 환경변수만 사용한다.
+    import: optional:classpath:application-local.yml
+  datasource:
+    url: jdbc:mysql://localhost:3308/battle_coach?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Seoul
+
+nexon:
+  api:
+    base-url: https://open.api.nexon.com
+    api-key: ${NEXON_API_KEY}
+    permits-per-second: 5      # 개발 단계 키 한도
+    max-attempts: 3            # 429, 5xx 재시도 포함 총 시도 횟수
+    initial-backoff: 500ms
+
+cache:
+  ocid-ttl: 1d
+  replay-list-ttl: 10m
+  job-statistics-ttl: 10m
+
+# 랭커 수집 관리 API(/api/admin/rankers). 인증이 없으므로 로컬에서만 켠다(application-local.yml).
+collector:
+  enabled: false
