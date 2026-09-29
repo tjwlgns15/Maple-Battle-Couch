@@ -64,7 +64,7 @@ class BurstOrderRuleTest {
 
     private static JobStatistics statistics(Precedence... precedences) {
         return new JobStatistics("칼리", 4, 11, Map.of(), List.of(),
-                new BurstOrderStatistics(33, List.of(), List.of(precedences)));
+                new BurstOrderStatistics(33, List.of(), List.of(precedences)), null);
     }
 
     private static SkillUsage skill(String name, long... castTimes) {

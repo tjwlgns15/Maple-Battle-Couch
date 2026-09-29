@@ -971,3 +971,26 @@ main section[id] {
         }
     }
 }
+
+/* ---------- 스펙 대비 DPS ---------- */
+.efficiency {
+    margin: 12px 0 20px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-raised);
+}
+
+.efficiency .chart-title {
+    margin-top: 0;
+}
+
+.efficiency-value {
+    margin: 4px 0 6px;
+    font-size: 1.05rem;
+}
+
+.efficiency-value b {
+    font-size: 1.35rem;
+    margin: 0 4px;
+}

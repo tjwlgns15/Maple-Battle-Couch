@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import org.springframework.stereotype.Component;
 
 import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.SkillUsage;
+import com.battlecoach.spec.domain.SkillLevel;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,16 +28,20 @@ public class JobStatisticsCalculator {
     static final long MIN_PAIR_COOLDOWN_MS = 10_000;
 
     private final BurstOrderStatisticsCalculator burstOrderStatisticsCalculator;
+    private final EfficiencyModelFitter efficiencyModelFitter;
 
+    /** 분당 시전·초 환산 분위수만 운용 효율로 가중한다. 극딜 순서와 함께 쓰는 쌍은 가중치 없이 센다. */
     public JobStatistics calculate(String characterClass, int periodNo, List<AnalysisContext> samples) {
-        return new JobStatistics(characterClass, periodNo, samples.size(), distributions(samples), pairs(samples),
-                burstOrderStatisticsCalculator.calculate(samples));
+        EfficiencyModel efficiency = efficiencyModelFitter.fit(samples).orElse(null);
+        return new JobStatistics(characterClass, periodNo, samples.size(), distributions(samples, efficiency),
+                pairs(samples), burstOrderStatisticsCalculator.calculate(samples), efficiency);
     }
 
-    private static Map<String, SkillDistribution> distributions(List<AnalysisContext> samples) {
+    private static Map<String, SkillDistribution> distributions(List<AnalysisContext> samples, EfficiencyModel efficiency) {
         Map<String, List<Observation>> byBaseName = new LinkedHashMap<>();
         for (AnalysisContext sample : samples) {
             double minutes = sample.playTimeMs() / 60_000.0;
+            double weight = efficiency == null ? 1.0 : efficiency.weightOf(sample);
             for (SkillUsage skill : sample.skills()) {
                 if (skill.castCount() == 0 || minutes <= 0) {
                     continue;
@@ -45,20 +49,29 @@ public class JobStatisticsCalculator {
                 byBaseName.computeIfAbsent(skill.baseName(), key -> new ArrayList<>()).add(new Observation(
                         skill.skillName(),
                         skill.castCount() / minutes,
-                        skill.damage() == null ? null : sample.toSeconds(skill.damage())));
+                        skill.damage() == null ? null : sample.toSeconds(skill.damage()),
+                        sample.spec().levelOf(skill.baseName()).orElse(null),
+                        weight));
             }
         }
 
         Map<String, SkillDistribution> distributions = new LinkedHashMap<>();
         byBaseName.forEach((baseName, observations) -> {
-            List<Double> seconds = observations.stream().map(Observation::seconds).filter(Objects::nonNull).toList();
+            List<Observation> withSeconds = observations.stream().filter(o -> o.seconds() != null).toList();
             distributions.put(baseName, new SkillDistribution(
                     baseName,
                     observations.get(0).skillName(),
                     observations.size(),
                     (double) observations.size() / samples.size(),
-                    Quartiles.of(observations.stream().map(Observation::castsPerMinute).toList()),
-                    seconds.isEmpty() ? null : Quartiles.of(seconds)));
+                    Quartiles.weighted(
+                            observations.stream().map(Observation::castsPerMinute).toList(),
+                            observations.stream().map(Observation::weight).toList()),
+                    withSeconds.isEmpty() ? null : Quartiles.weighted(
+                            withSeconds.stream().map(Observation::seconds).toList(),
+                            withSeconds.stream().map(Observation::weight).toList()),
+                    withSeconds.stream()
+                            .map(o -> new SkillDistribution.SecondsSample(o.seconds(), o.level(), o.weight()))
+                            .toList()));
         });
         return distributions;
     }
@@ -97,7 +110,7 @@ public class JobStatisticsCalculator {
                 .toList();
     }
 
-    private record Observation(String skillName, double castsPerMinute, Double seconds) {
+    private record Observation(String skillName, double castsPerMinute, Double seconds, SkillLevel level, double weight) {
     }
 
     private static final class PairCounter {

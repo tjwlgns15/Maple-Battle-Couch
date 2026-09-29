@@ -14,6 +14,7 @@ import java.util.Set;
  *
  * @param pairs      표본 다수가 함께 쓰는 스킬 쌍만 담는다
  * @param burstOrder 모든 극딜 구간의 스킬 순서 통계
+ * @param efficiency 스펙 대비 DPS 추세선. 전투력을 모르거나 표본이 적으면 null
  */
 public record JobStatistics(
         String characterClass,
@@ -21,7 +22,8 @@ public record JobStatistics(
         int sampleCount,
         Map<String, SkillDistribution> skills,
         List<PairStatistic> pairs,
-        BurstOrderStatistics burstOrder
+        BurstOrderStatistics burstOrder,
+        EfficiencyModel efficiency
 ) {
 
     /** 이보다 표본이 적으면 통계 진단을 내지 않는다. */
@@ -35,6 +37,10 @@ public record JobStatistics(
 
     public boolean isReliable() {
         return sampleCount >= MIN_SAMPLES;
+    }
+
+    public Optional<EfficiencyModel> efficiencyModel() {
+        return Optional.ofNullable(efficiency);
     }
 
     public Optional<SkillDistribution> skill(String baseName) {

@@ -65,6 +65,22 @@ class NexonCharacterSpecParserTest {
     }
 
     @Test
+    void 전투력을_읽고_헥사_매트릭스가_없으면_레벨_합은_0이다() {
+        // 샘플에는 hexa_matrix_object 를 남기지 않았다
+        assertThat(spec.powerStats().combatPower()).isEqualTo(563_346_261L);
+        assertThat(spec.powerStats().hasHexaLevels()).isFalse();
+    }
+
+    @Test
+    void 강화_코어_레벨을_스킬_레벨과_함께_읽는다() {
+        // "헥스 : 판데모니움 강화" Lv20 이 따로 온다
+        assertThat(spec.levelOf("헥스 : 판데모니움")).get()
+                .satisfies(level -> assertThat(level.enhancementLevel()).isEqualTo(20));
+        assertThat(spec.levelOf("크레스트 오브 더 솔라")).get()
+                .satisfies(level -> assertThat(level.enhancementLevel()).isNull());
+    }
+
+    @Test
     void 캐릭터_스킬_목록에_없는_스킬은_찾지_못한다() {
         assertThat(spec.find("소울 컨트랙트")).isEmpty();
     }

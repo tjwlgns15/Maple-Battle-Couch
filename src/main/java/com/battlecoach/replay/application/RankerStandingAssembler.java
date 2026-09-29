@@ -11,14 +11,18 @@ import com.battlecoach.diagnosis.domain.SkillUsage;
 import com.battlecoach.diagnosis.sequence.BurstOrderExtractor;
 import com.battlecoach.diagnosis.sequence.SequenceAligner;
 import com.battlecoach.diagnosis.statistics.BurstOrderStatistics;
+import com.battlecoach.diagnosis.statistics.EfficiencyModel;
 import com.battlecoach.diagnosis.statistics.JobStatistics;
 import com.battlecoach.diagnosis.statistics.JobStatisticsCalculator;
 import com.battlecoach.diagnosis.statistics.SkillDistribution;
+import com.battlecoach.diagnosis.statistics.SkillDistribution.SecondsBasis;
 import com.battlecoach.replay.application.dto.RankerStanding;
+import com.battlecoach.replay.application.dto.RankerStanding.Efficiency;
 import com.battlecoach.replay.application.dto.RankerStanding.GroupRow;
 import com.battlecoach.replay.application.dto.RankerStanding.Member;
 import com.battlecoach.replay.application.dto.RankerStanding.OrderRow;
 import com.battlecoach.replay.application.dto.RankerStanding.Row;
+import com.battlecoach.spec.domain.SkillLevel;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,7 +50,14 @@ class RankerStandingAssembler {
                 .toList();
         return new RankerStanding(periodNo, statistics.sampleCount(), statistics.isReliable(), null,
                 rows, groupRows(context, statistics), statistics.burstOrder().burstCount(),
-                burstOrderRows(context, statistics.burstOrder()));
+                burstOrderRows(context, statistics.burstOrder()),
+                statistics.efficiencyModel().map(model -> efficiency(context, model)).orElse(null));
+    }
+
+    private static Efficiency efficiency(AnalysisContext context, EfficiencyModel model) {
+        return new Efficiency(model.efficiencyOf(context).orElse(null), model.minEfficiency(), model.maxEfficiency(),
+                model.usesHexa(), model.sampleCount(), EfficiencyModel.LOW_EFFICIENCY_WEIGHT,
+                context.spec().powerStats(), model.minPower(), model.maxPower());
     }
 
     /** 내 첫 극딜 순서를 랭커 표준 순서(극딜 절반 이상에서 쓰는 스킬, 상대 위치 중앙값 순)에 맞춘다. */
@@ -69,6 +80,8 @@ class RankerStandingAssembler {
         }
         double myRate = mine.map(skill -> skill.castCount() / context.playTimeMinutes()).orElse(0.0);
         Double mySeconds = mine.map(SkillUsage::damage).map(context::toSeconds).orElse(null);
+        SkillLevel myLevel = context.spec().levelOf(distribution.baseName()).orElse(null);
+        Optional<SecondsBasis> seconds = distribution.secondsFor(myLevel);
         return Optional.of(new Row(
                 mine.map(SkillUsage::skillName).orElse(distribution.skillName()),
                 distribution.adoptionRate(),
@@ -76,8 +89,11 @@ class RankerStandingAssembler {
                 myRate,
                 distribution.castsPerMinute(),
                 mySeconds,
-                distribution.seconds(),
-                myRate < distribution.castsPerMinute().p25()));
+                seconds.map(SecondsBasis::quartiles).orElse(null),
+                myRate < distribution.castsPerMinute().p25(),
+                myLevel == null ? null : myLevel.label(),
+                seconds.map(SecondsBasis::sampleCount).orElse(0),
+                seconds.map(SecondsBasis::levelMatched).orElse(false)));
     }
 
     private static List<GroupRow> groupRows(AnalysisContext context, JobStatistics statistics) {

@@ -79,11 +79,11 @@ class StatisticsRuleTest {
 
     private static JobStatistics statistics(int samples, SkillDistribution distribution, List<PairStatistic> pairs) {
         return new JobStatistics("칼리", 4, samples, Map.of(distribution.baseName(), distribution), pairs,
-                BurstOrderStatistics.empty());
+                BurstOrderStatistics.empty(), null);
     }
 
     private static SkillDistribution distribution(String name, int users, double p25, double p50, double p75) {
-        return new SkillDistribution(name, name, users, 1.0, new Quartiles(p25, p50, p75), null);
+        return new SkillDistribution(name, name, users, 1.0, new Quartiles(p25, p50, p75), null, null);
     }
 
     private static SkillUsage skill(String name, Long cooldownMs, Long damage, long... castTimes) {

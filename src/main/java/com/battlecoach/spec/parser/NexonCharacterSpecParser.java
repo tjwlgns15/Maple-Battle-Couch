@@ -12,6 +12,7 @@ import com.battlecoach.nexon.dto.CharacterInfoSpecResponse.CharacterSkill;
 import com.battlecoach.nexon.dto.CharacterInfoSpecResponse.FinalStat;
 import com.battlecoach.spec.domain.CharacterSpec;
 import com.battlecoach.spec.domain.CooldownStats;
+import com.battlecoach.spec.domain.PowerStats;
 import com.battlecoach.spec.domain.SkillSpec;
 import com.battlecoach.spec.domain.SkillText;
 
@@ -26,19 +27,27 @@ public class NexonCharacterSpecParser implements CharacterSpecParser {
     static final String REDUCTION_PERCENT = "재사용 대기시간 감소 (%)";
     static final String RESET_CHANCE = "재사용 대기시간 미적용";
     static final String BUFF_DURATION = "버프 지속시간";
+    static final String COMBAT_POWER = "전투력";
 
     private final JsonMapper jsonMapper;
 
     @Override
     public CharacterSpec parse(String characterInfoJson) {
         CharacterInfoSpecResponse response = jsonMapper.readValue(characterInfoJson, CharacterInfoSpecResponse.class);
-        return CharacterSpec.of(toCooldownStats(finalStats(response)), toSkillSpecs(skills(response)));
+        Map<String, String> finalStats = byName(finalStats(response));
+        return CharacterSpec.of(
+                toCooldownStats(finalStats),
+                PowerStats.of(Math.round(number(finalStats.get(COMBAT_POWER))), hexaLevelSum(response)),
+                toSkillSpecs(skills(response)));
     }
 
-    private static CooldownStats toCooldownStats(List<FinalStat> finalStats) {
-        Map<String, String> byName = finalStats.stream()
+    private static Map<String, String> byName(List<FinalStat> finalStats) {
+        return finalStats.stream()
                 .filter(stat -> stat.statName() != null && stat.statValue() != null)
                 .collect(Collectors.toMap(FinalStat::statName, FinalStat::statValue, (first, second) -> first));
+    }
+
+    private static CooldownStats toCooldownStats(Map<String, String> byName) {
         return CooldownStats.of(
                 number(byName.get(REDUCTION_SECONDS)),
                 number(byName.get(REDUCTION_PERCENT)),
@@ -54,6 +63,16 @@ public class NexonCharacterSpecParser implements CharacterSpecParser {
                         skill.skillLevel(),
                         SkillText.of(skill.skillEffect(), skill.skillDescription())))
                 .toList();
+    }
+
+    private static int hexaLevelSum(CharacterInfoSpecResponse response) {
+        return Optional.ofNullable(response.hexaMatrixObject())
+                .map(CharacterInfoSpecResponse.HexaMatrixObject::hexaCoreObject)
+                .map(CharacterInfoSpecResponse.HexaCoreObject::equipment)
+                .orElse(List.of())
+                .stream()
+                .mapToInt(CharacterInfoSpecResponse.HexaCore::level)
+                .sum();
     }
 
     private static List<FinalStat> finalStats(CharacterInfoSpecResponse response) {

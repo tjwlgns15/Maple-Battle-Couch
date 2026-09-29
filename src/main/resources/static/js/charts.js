@@ -517,12 +517,20 @@
                     return null;
                 }
                 const percent = (v) => (v / q.p50) * 100;
+                const unmatched = metric === 'seconds' && !r.secondsLevelMatched;
+                let basis = null;
+                if (metric === 'seconds') {
+                    basis = r.secondsLevelMatched
+                        ? `${r.myLevel}이 같은 랭커 ${r.secondsSampleCount}명과 비교`
+                        : `같은 레벨 랭커가 부족해 레벨 무관 ${r.secondsSampleCount}명과 비교${r.myLevel ? ` (내 스킬 ${r.myLevel})` : ''}`;
+                }
                 return {
-                    name: r.skillName,
+                    name: unmatched ? `${r.skillName} *` : r.skillName,
                     p25: percent(q.p25),
                     p75: percent(q.p75),
                     mine: percent(mine),
                     low: mine < q.p25,
+                    basis,
                     raw: { q, mine },
                 };
             })
@@ -543,9 +551,13 @@
                     formatter: (params) => {
                         const item = items[params[0].dataIndex];
                         const { q, mine } = item.raw;
-                        return [`<b>${escapeHtml(item.name)}</b>`,
+                        const lines = [`<b>${escapeHtml(item.name)}</b>`,
                             `내 값 ${fixed(mine)}${unit} (랭커 중앙값의 ${item.mine.toFixed(0)}%)`,
-                            `랭커 25 / 50 / 75%: ${fixed(q.p25)} / ${fixed(q.p50)} / ${fixed(q.p75)}${unit}`].join('<br>');
+                            `랭커 25 / 50 / 75%: ${fixed(q.p25)} / ${fixed(q.p50)} / ${fixed(q.p75)}${unit}`];
+                        if (item.basis) {
+                            lines.push(escapeHtml(item.basis));
+                        }
+                        return lines.join('<br>');
                     },
                 },
                 xAxis: {
