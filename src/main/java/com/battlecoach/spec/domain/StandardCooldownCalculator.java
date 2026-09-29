@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  *   <li>초 감소로는 5초 미만이 되지 않는다.</li>
  * </ol>
  * 칼리 2명 실측(판데모니움, 스틱스, 120초 버프류, 에르다 노바)에서 계산값이 실측 최소 간격 이하였다.
- * 옛 공식 (기본 − 초) × (1 − %) 은 연자히 판데모니움을 24.44초로 계산해 실측 24.24초보다 길었다.
+ * 옛 공식 (기본 − 초) × (1 − %) 은 칼리 B 판데모니움을 24.44초로 계산해 실측 24.24초보다 길었다.
  */
 @Component
 public class StandardCooldownCalculator implements CooldownCalculator {

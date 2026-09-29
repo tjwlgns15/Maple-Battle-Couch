@@ -14,7 +14,7 @@ import com.battlecoach.spec.domain.SkillSpec;
 
 import tools.jackson.databind.json.JsonMapper;
 
-/** 칼리얏(칼리) 연무장 character-info 원문에서 필요한 필드만 남긴 샘플로 검증한다. */
+/** 칼리 캐릭터 한 명의 연무장 character-info 원문에서 필요한 필드만 남기고 캐릭터명을 가린 샘플로 검증한다. */
 class NexonCharacterSpecParserTest {
 
     private static CharacterSpec spec;

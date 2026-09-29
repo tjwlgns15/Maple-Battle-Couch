@@ -19,7 +19,7 @@ class NeedlemanWunschAlignerTest {
 
     @Test
     void 한쪽에만_있는_스킬은_간격으로_맞춘다() {
-        // 연자히에는 플레게톤이 없다
+        // 칼리 B에는 플레게톤이 없다
         List<AlignedPair> pairs = aligner.align(
                 List.of("데스 블로섬", "레이스 오브 갓", "오블리비온"),
                 List.of("데스 블로섬", "플레게톤", "레이스 오브 갓", "오블리비온"));

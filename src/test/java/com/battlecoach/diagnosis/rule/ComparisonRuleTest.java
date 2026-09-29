@@ -16,7 +16,7 @@ import com.battlecoach.spec.domain.CharacterSpec;
 import com.battlecoach.spec.domain.CooldownStats;
 import com.battlecoach.spec.domain.SkillSpec;
 
-/** 비교 규칙(CastCountGapRule, LoadoutRule). 연자히(나) vs 칼리얏(기준) 사례를 단순화했다. */
+/** 비교 규칙(CastCountGapRule, LoadoutRule). 칼리 B(나) vs 칼리 A(기준) 사례를 단순화했다. */
 class ComparisonRuleTest {
 
     private static final CooldownStats STATS = CooldownStats.of(4, 6, 27, 0);

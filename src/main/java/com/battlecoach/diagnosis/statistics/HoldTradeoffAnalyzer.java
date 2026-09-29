@@ -15,7 +15,7 @@ import com.battlecoach.diagnosis.domain.SkillUsage;
 
 /**
  * 표본마다 한 스킬의 극딜 대기 시간, 분당 시전 수, 초 환산을 모아 순위 상관을 본다.
- * 칼리얏(판데모니움을 극딜까지 아껴 12회)과 연자히(쿨마다 14회) 두 기록에서 나온 가설을 표본으로 확인하기 위한 분석이다.
+ * 칼리 A(판데모니움을 극딜까지 아껴 12회)와 칼리 B(쿨마다 14회) 두 기록에서 나온 가설을 표본으로 확인하기 위한 분석이다.
  */
 @Component
 public class HoldTradeoffAnalyzer {
