@@ -12,14 +12,16 @@ import java.util.Set;
 /**
  * 직업·기간별 랭커 표본 통계. 레벨 랭킹에서 모은 표본이라 "잘 치는 사람"의 통계라는 보장은 없다.
  *
- * @param pairs 표본 다수가 함께 쓰는 스킬 쌍만 담는다
+ * @param pairs      표본 다수가 함께 쓰는 스킬 쌍만 담는다
+ * @param burstOrder 모든 극딜 구간의 스킬 순서 통계
  */
 public record JobStatistics(
         String characterClass,
         int periodNo,
         int sampleCount,
         Map<String, SkillDistribution> skills,
-        List<PairStatistic> pairs
+        List<PairStatistic> pairs,
+        BurstOrderStatistics burstOrder
 ) {
 
     /** 이보다 표본이 적으면 통계 진단을 내지 않는다. */
@@ -28,6 +30,7 @@ public record JobStatistics(
     public JobStatistics {
         skills = Map.copyOf(skills);
         pairs = List.copyOf(pairs);
+        burstOrder = burstOrder == null ? BurstOrderStatistics.empty() : burstOrder;
     }
 
     public boolean isReliable() {

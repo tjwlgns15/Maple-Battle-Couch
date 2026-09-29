@@ -119,6 +119,37 @@
                     </li>
                 </ul>
             </th:block>
+            <th:block th:unless="${#lists.isEmpty(st.burstOrder())}">
+                <h3 class="finding-group">극딜 순서: 내 첫 극딜 vs 랭커 표준</h3>
+                <p class="muted small">
+                    랭커 극딜 <span th:text="${st.burstCount()}">33</span>회에서 절반 이상 나온 스킬을 극딜 안 상대 위치(중앙값) 순으로 나열한 것이 표준 순서입니다.
+                    대부분 시퀀스(매크로) 순서라, 1초 안에 함께 나가는 스킬끼리의 앞뒤는 큰 의미가 없습니다.
+                    강조된 칸은 한쪽 순서에만 그 자리에 있는 스킬입니다.
+                </p>
+                <div class="table-scroll">
+                    <table class="table compact align-table">
+                        <thead>
+                        <tr>
+                            <th class="right">#</th>
+                            <th>내 첫 극딜</th>
+                            <th>랭커 표준</th>
+                            <th class="right">랭커 극딜 채택률</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="o, it : ${st.burstOrder()}">
+                            <td class="right muted" th:text="${it.count}">1</td>
+                            <td th:classappend="${o.isMatch()} ? 'match' : (${o.mine()} != null ? 'only' : '')"
+                                th:text="${o.mine()} ?: ''">스킬</td>
+                            <td th:classappend="${o.isMatch()} ? 'match' : (${o.standard()} != null ? 'only' : '')"
+                                th:text="${o.standard()} ?: ''">스킬</td>
+                            <td class="right muted"
+                                th:text="${o.standardAdoption()} == null ? '' : ${#numbers.formatDecimal(o.standardAdoption() * 100, 1, 0)} + '%'">100%</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </th:block>
         </th:block>
     </section>
 

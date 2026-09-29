@@ -1,7 +1,6 @@
 package com.battlecoach.ranker.application;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.cache.annotation.Cacheable;
@@ -12,11 +11,6 @@ import com.battlecoach.diagnosis.statistics.JobStatistics;
 import com.battlecoach.diagnosis.statistics.JobStatisticsCalculator;
 import com.battlecoach.diagnosis.statistics.JobStatisticsProvider;
 import com.battlecoach.global.config.CacheNames;
-import com.battlecoach.ranker.domain.RankerSample;
-import com.battlecoach.ranker.repository.RankerSampleRepository;
-import com.battlecoach.replay.application.AnalysisContextFactory;
-import com.battlecoach.replay.application.ReplayQueryService;
-import com.battlecoach.replay.domain.ReplayId;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,9 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JobStatisticsService implements JobStatisticsProvider {
 
-    private final RankerSampleRepository rankerSampleRepository;
-    private final ReplayQueryService replayQueryService;
-    private final AnalysisContextFactory analysisContextFactory;
+    private final RankerSampleLoader rankerSampleLoader;
     private final JobStatisticsCalculator jobStatisticsCalculator;
 
     @Override
@@ -38,14 +30,8 @@ public class JobStatisticsService implements JobStatisticsProvider {
             key = "#characterClass + '|' + #periodNo + '|' + #excludeReplayId",
             unless = "#result == null")
     public Optional<JobStatistics> find(String characterClass, int periodNo, String excludeReplayId) {
-        List<AnalysisContext> samples = rankerSampleRepository.findByCharacterClassAndPeriodNo(characterClass, periodNo)
-                .stream()
-                .map(RankerSample::getReplayId)
-                .filter(replayId -> !replayId.equals(excludeReplayId))
-                .map(replayId -> replayQueryService.findStored(ReplayId.of(replayId)).orElse(null))
-                .filter(Objects::nonNull)
-                .map(analysisContextFactory::create)
-                .toList();
+        List<AnalysisContext> samples = List.copyOf(
+                rankerSampleLoader.load(characterClass, periodNo, excludeReplayId).values());
         if (samples.isEmpty()) {
             return Optional.empty();
         }

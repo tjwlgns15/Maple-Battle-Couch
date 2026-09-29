@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.battlecoach.diagnosis.statistics.HoldTradeoff;
 import com.battlecoach.diagnosis.statistics.JobStatistics;
 import com.battlecoach.ranker.application.CollectRequest;
 import com.battlecoach.ranker.application.CollectStatus;
+import com.battlecoach.ranker.application.HoldTradeoffService;
 import com.battlecoach.ranker.application.JobStatisticsService;
 import com.battlecoach.ranker.application.RankerCollector;
 
@@ -35,6 +37,7 @@ public class RankerAdminController {
 
     private final RankerCollector rankerCollector;
     private final JobStatisticsService jobStatisticsService;
+    private final HoldTradeoffService holdTradeoffService;
 
     @PostMapping("/collect")
     public ResponseEntity<CollectStatus> collect(
@@ -63,5 +66,16 @@ public class RankerAdminController {
     public JobStatistics statistics(@RequestParam String characterClass, @RequestParam int periodNo) {
         return jobStatisticsService.find(characterClass, periodNo, NO_EXCLUSION)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "표본이 없습니다."));
+    }
+
+    /**
+     * "극딜까지 아끼는 것 vs 쿨마다 쓰는 것" 가설 확인 (분석용)
+     * 예: GET /api/admin/rankers/hold-tradeoff?characterClass=칼리&periodNo=4&skill=헥스 : 판데모니움
+     */
+    @GetMapping("/hold-tradeoff")
+    public HoldTradeoff holdTradeoff(@RequestParam String characterClass, @RequestParam int periodNo,
+                                     @RequestParam String skill) {
+        return holdTradeoffService.analyze(characterClass, periodNo, skill)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "이 스킬을 쓴 표본이 없습니다."));
     }
 }

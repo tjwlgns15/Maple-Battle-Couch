@@ -11,8 +11,11 @@ import org.springframework.stereotype.Component;
 import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 
+import lombok.RequiredArgsConstructor;
+
 /** 랭커 표본(기록별 분석 컨텍스트)에서 직업 통계를 계산한다. */
 @Component
+@RequiredArgsConstructor
 public class JobStatisticsCalculator {
 
     /** 두 시전이 이 안에 있으면 함께 썼다고 본다. */
@@ -24,8 +27,11 @@ public class JobStatisticsCalculator {
     /** 짝 판정에 쓰는 최소 쿨. 계속 쓰는 짧은 쿨 스킬은 우연히 겹친다. */
     static final long MIN_PAIR_COOLDOWN_MS = 10_000;
 
+    private final BurstOrderStatisticsCalculator burstOrderStatisticsCalculator;
+
     public JobStatistics calculate(String characterClass, int periodNo, List<AnalysisContext> samples) {
-        return new JobStatistics(characterClass, periodNo, samples.size(), distributions(samples), pairs(samples));
+        return new JobStatistics(characterClass, periodNo, samples.size(), distributions(samples), pairs(samples),
+                burstOrderStatisticsCalculator.calculate(samples));
     }
 
     private static Map<String, SkillDistribution> distributions(List<AnalysisContext> samples) {

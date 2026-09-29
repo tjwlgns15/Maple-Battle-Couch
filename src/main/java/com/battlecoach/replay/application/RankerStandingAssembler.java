@@ -8,16 +8,23 @@ import org.springframework.stereotype.Component;
 
 import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.SkillUsage;
+import com.battlecoach.diagnosis.sequence.BurstOrderExtractor;
+import com.battlecoach.diagnosis.sequence.SequenceAligner;
+import com.battlecoach.diagnosis.statistics.BurstOrderStatistics;
 import com.battlecoach.diagnosis.statistics.JobStatistics;
 import com.battlecoach.diagnosis.statistics.JobStatisticsCalculator;
 import com.battlecoach.diagnosis.statistics.SkillDistribution;
 import com.battlecoach.replay.application.dto.RankerStanding;
 import com.battlecoach.replay.application.dto.RankerStanding.GroupRow;
 import com.battlecoach.replay.application.dto.RankerStanding.Member;
+import com.battlecoach.replay.application.dto.RankerStanding.OrderRow;
 import com.battlecoach.replay.application.dto.RankerStanding.Row;
+
+import lombok.RequiredArgsConstructor;
 
 /** 내 기록의 스킬별 값을 랭커 분포 옆에 놓는다. */
 @Component
+@RequiredArgsConstructor
 class RankerStandingAssembler {
 
     /** 랭커 절반 이상이 쓰는 스킬은 내가 안 썼어도 표에 넣는다. */
@@ -28,6 +35,9 @@ class RankerStandingAssembler {
                     Comparator.nullsLast(Comparator.reverseOrder()))
             .thenComparing(Row::skillName);
 
+    private final BurstOrderExtractor burstOrderExtractor;
+    private final SequenceAligner sequenceAligner;
+
     RankerStanding assemble(AnalysisContext context, int periodNo, JobStatistics statistics) {
         List<Row> rows = statistics.skills().values().stream()
                 .map(distribution -> toRow(context, distribution))
@@ -35,7 +45,21 @@ class RankerStandingAssembler {
                 .sorted(ORDER)
                 .toList();
         return new RankerStanding(periodNo, statistics.sampleCount(), statistics.isReliable(), null,
-                rows, groupRows(context, statistics));
+                rows, groupRows(context, statistics), statistics.burstOrder().burstCount(),
+                burstOrderRows(context, statistics.burstOrder()));
+    }
+
+    /** 내 첫 극딜 순서를 랭커 표준 순서(극딜 절반 이상에서 쓰는 스킬, 상대 위치 중앙값 순)에 맞춘다. */
+    private List<OrderRow> burstOrderRows(AnalysisContext context, BurstOrderStatistics burstOrder) {
+        List<String> standard = burstOrder.standardOrder().stream().map(BurstOrderStatistics.Entry::baseName).toList();
+        if (standard.isEmpty()) {
+            return List.of();
+        }
+        return sequenceAligner.align(burstOrderExtractor.firstBurstOrder(context), standard).stream()
+                .map(pair -> new OrderRow(pair.left(), pair.right(),
+                        pair.right() == null ? null
+                                : burstOrder.entry(pair.right()).map(BurstOrderStatistics.Entry::adoptionRate).orElse(null)))
+                .toList();
     }
 
     private static Optional<Row> toRow(AnalysisContext context, SkillDistribution distribution) {

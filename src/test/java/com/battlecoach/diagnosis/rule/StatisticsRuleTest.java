@@ -13,6 +13,7 @@ import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.Finding;
 import com.battlecoach.diagnosis.domain.FindingType;
 import com.battlecoach.diagnosis.domain.SkillUsage;
+import com.battlecoach.diagnosis.statistics.BurstOrderStatistics;
 import com.battlecoach.diagnosis.statistics.JobStatistics;
 import com.battlecoach.diagnosis.statistics.PairStatistic;
 import com.battlecoach.diagnosis.statistics.Quartiles;
@@ -77,7 +78,8 @@ class StatisticsRuleTest {
     }
 
     private static JobStatistics statistics(int samples, SkillDistribution distribution, List<PairStatistic> pairs) {
-        return new JobStatistics("칼리", 4, samples, Map.of(distribution.baseName(), distribution), pairs);
+        return new JobStatistics("칼리", 4, samples, Map.of(distribution.baseName(), distribution), pairs,
+                BurstOrderStatistics.empty());
     }
 
     private static SkillDistribution distribution(String name, int users, double p25, double p50, double p75) {

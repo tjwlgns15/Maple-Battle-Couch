@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.SkillUsage;
+import com.battlecoach.diagnosis.sequence.BurstOrderExtractor;
 import com.battlecoach.spec.domain.CharacterSpec;
 import com.battlecoach.spec.domain.CooldownStats;
 
@@ -17,7 +18,8 @@ class JobStatisticsCalculatorTest {
 
     private static final CharacterSpec SPEC = CharacterSpec.of(CooldownStats.of(0, 0, 27, 0), List.of());
 
-    private final JobStatisticsCalculator calculator = new JobStatisticsCalculator();
+    private final JobStatisticsCalculator calculator =
+            new JobStatisticsCalculator(new BurstOrderStatisticsCalculator(new BurstOrderExtractor()));
 
     @Test
     void 분위수는_선형_보간한다() {
@@ -75,7 +77,8 @@ class JobStatisticsCalculatorTest {
                 new PairStatistic("스틱스", "레디 투 다이", "레디 투 다이", 11, 0.91),
                 new PairStatistic("레디 투 다이", "데스 블로섬", "데스 블로섬", 11, 1.0),
                 new PairStatistic("레이스 오브 갓", "오블리비온", "오블리비온", 11, 1.0),
-                new PairStatistic("오블리비온", "레이스 오브 갓", "레이스 오브 갓", 11, 1.0)));
+                new PairStatistic("오블리비온", "레이스 오브 갓", "레이스 오브 갓", 11, 1.0)),
+                BurstOrderStatistics.empty());
 
         List<List<String>> groups = statistics.pairGroups();
 

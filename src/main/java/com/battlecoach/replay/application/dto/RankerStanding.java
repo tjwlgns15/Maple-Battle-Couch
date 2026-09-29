@@ -15,11 +15,13 @@ public record RankerStanding(
         boolean reliable,
         String unavailableReason,
         List<Row> rows,
-        List<GroupRow> groups
+        List<GroupRow> groups,
+        int burstCount,
+        List<OrderRow> burstOrder
 ) {
 
     public static RankerStanding unavailable(Integer periodNo, int sampleCount, String reason) {
-        return new RankerStanding(periodNo, sampleCount, false, reason, List.of(), List.of());
+        return new RankerStanding(periodNo, sampleCount, false, reason, List.of(), List.of(), 0, List.of());
     }
 
     public boolean isAvailable() {
@@ -58,6 +60,18 @@ public record RankerStanding(
 
         public boolean isSeparated() {
             return myCasts > 0 && myTogether * 2 < myCasts;
+        }
+    }
+
+    /**
+     * 내 첫 극딜 순서와 랭커 표준 극딜 순서를 서열 정렬한 한 줄. 한쪽에만 있으면 다른 쪽은 null 이다.
+     *
+     * @param standardAdoption 표준 쪽 스킬이 랭커 극딜에 나온 비율
+     */
+    public record OrderRow(String mine, String standard, Double standardAdoption) {
+
+        public boolean isMatch() {
+            return mine != null && mine.equals(standard);
         }
     }
 }
