@@ -8,6 +8,7 @@
         <a th:href="@{/replays/{id}(id=${base.replayId()})}"
            th:text="|${base.characterName()} ${#temporals.format(base.registerDate(), 'yyyy-MM-dd')} 기록으로 돌아가기|">돌아가기</a>
     </p>
+    <p class="eyebrow">Select Reference</p>
     <h1>비교할 기준 기록 선택</h1>
     <p class="muted">
         <span class="role">내 기록</span>

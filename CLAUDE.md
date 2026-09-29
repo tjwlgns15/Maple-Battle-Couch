@@ -18,7 +18,13 @@
 
 ## 3. 기술 스택과 컨벤션
 
-- Java 17, Spring Boot 4.x, Gradle, JPA/Hibernate, MySQL, Caffeine, Lombok. 프런트엔드는 Thymeleaf와 ECharts(예정).
+- Java 17, Spring Boot 4.x, Gradle, JPA/Hibernate, MySQL, Caffeine, Lombok. 프런트엔드는 Thymeleaf와 ECharts.
+- 디자인: 어두운 "천공" 테마(메이플스토리 연무장의 구름 위 하늘 신전 색감을 참고했고, 게임 이미지·로고는 쓰지 않는다).
+  - 색은 `static/css/app.css`의 `:root` 토큰으로만 쓴다. `charts.js`도 토큰을 읽어 ECharts 테마(`battle-coach`)를 등록한다.
+  - 역할: 청록(주요 동작·내 기록), 연두(실행 버튼, 글자는 짙은 남색), 보라 그라데이션(상단 수치 카드), 산호(손해·기준 기록), 금색(영향도·강조), 보라 음영(극딜 구간), 청록 음영(시퀀스).
+  - 섹션 제목은 `<h2 data-label="Diagnosis">`처럼 영문 대문자 라벨을 단다(게임 UI의 "REPLAY BOARD" 느낌). 페이지 제목 위에는 `<p class="eyebrow">`.
+  - 첫 화면 장식(빛기둥·돌기둥·화로·오브·운무)은 `index.html`의 인라인 SVG로 직접 그렸다. `z-index: -1` 장식은 부모에 `isolation: isolate`가 있어야 배경 뒤로 숨지 않는다.
+  - 정적 파일은 내용 해시 주소(`spring.web.resources.chain.strategy.content`)로 나간다. 해시 계산이 캐시되므로 CSS·JS를 고치면 서버를 다시 띄워야 반영된다.
 - 기본 패키지: `com.battlecoach`
 - 컨벤션
   - SRP를 지킨다.
@@ -178,7 +184,9 @@ com.battlecoach
 - 상세 화면 맨 위 "진단" 섹션(초 환산, DPS 대비 %, 참고 접기). 타임라인에 극딜 구간 노란 음영.
 - 비교: `ReplayComparisonService` → `ReplayComparison`(진단, 스킬별 비교표 `SkillRow`, 극딜 순서 정렬, 양쪽 극딜 구간). `ReplayCompareController`
   - `GET /compare/select?base={id}[&name=]`: 기준 기록 고르기(이름이 없으면 같은 캐릭터의 다른 기록)
-  - `GET /compare?base={내 기록}&target={기준 기록}`: 요약, 진단(운용 / 구성·스펙), 극딜 순서 정렬, 스킬별 비교, 합친 타임라인 1개
+  - `GET /compare?base={내 기록}&target={기준 기록}`: 요약, 진단(운용 / 구성·스펙), 극딜 순서 정렬, 스킬 레벨 비교, 운용 비교, 합친 타임라인 1개
+    - 스킬 레벨 비교(`SpecComparison`): 레벨이 다른 스킬(차이 큰 순, 레벨 막대와 ▼▲ 뱃지), 한쪽만 가진 스킬(미보유), 같은 스킬(접기). 운용과 섞지 않으려고 스킬별 표에서 떼어냈다.
+    - 운용 비교: ① 시전 횟수 차이(기준 대비 %, 0 가운데 가로 막대, 1회 미만 차이는 뺌. 기본 공격 수백 회와 쿨기 수 회를 같은 눈금에 두려고 비율을 쓴다) ② 딜 비중 차이의 원인(시전 수 효과·1회 효율 효과 누적 막대, 차이 큰 12개, 한쪽에 시전 기록이 없으면 회색 "나눌 수 없음") ③ 전체 수치 표는 접기
   - **같은 직업끼리만 비교한다.** `ReplayComparisonService.requireSameClass`가 URL을 직접 입력한 경우까지 막는다. 선택 화면에서 다른 캐릭터를 검색하면 `CharacterClassResolver`(`/character/basic` 1건, `characterClass` 캐시 1일)로 직업부터 확인한다. 다르면 기록 목록(과 본문 3건)을 부르지 않는다. `/character/basic`의 `character_class` 표기는 연무장 직업명과 같다.
   - 합친 타임라인(`renderComparisonTimeline`): 스킬마다 한 줄을 쓰고, 내 기록(파란 원)은 줄 위쪽 −0.2, 기준 기록(주황 마름모)은 아래쪽 +0.2에 찍는다. Y축은 값 축(점 위치와 줄 경계선)과 카테고리 축(줄 가운데 스킬 이름) 두 개를 겹쳐 쓴다. ECharts 값 축은 `min`부터 눈금을 매겨서, 값 축 하나로는 줄 가운데에 이름을 둘 수 없었다. Y축을 뒤집으면 X축이 0에 붙으므로 `axisLine.onZero=false`를 둔다. 극딜 구간은 기록별 색(노랑 / 주황)의 옅은 음영이다.
   - JS: `static/js/charts.js`(공통: 점유율·타임라인·비교 타임라인 차트, `window.BattleCoachCharts`) + `replay-detail.js` / `compare.js`
@@ -191,7 +199,10 @@ com.battlecoach
 - `ranker` 패키지 (수집)
   - `RankerCollector`: 종합 랭킹 순서대로 ocid → 기록 목록 → 대상 기간 기록을 `ReplayQueryService`로 저장하고 `RankerSample`로 등록한다. 결과는 `RankerProbe`(NOT_FOUND / NO_RECORD / OTHER_PERIOD_ONLY / SAMPLED)로 남겨 다시 부르지 않는다. 다음 단계 호출이 상한을 넘으면 그 전에 멈춘다. `TaskExecutor`로 비동기 실행하며 한 번에 하나만 돈다.
   - `RankerAdminController`(`collector.enabled=true`일 때만 등록, 인증 없음 → 로컬 전용): `POST /api/admin/rankers/collect?jobClass=칼리-전체전직&maxCalls=400&maxRankers=200`, `GET /status`, `GET /statistics?characterClass=칼리&periodNo=4`
-- 상세 화면 "랭커 대비" 섹션: 스킬별 채택률, 분당 시전·초 환산(나 vs 랭커 25/50/75%), 함께 쓰는 스킬 묶음과 내 함께 쓴 횟수. 기간을 모르면(목록을 거치지 않음) 안내만 한다.
+- 상세 화면 구성(위에서부터): 요약 카드 → 섹션 이동 칩(고정) → 진단(한 줄 요약 "고칠 점 N개 · 합계 X초 손해" + 카드) → 랭커 대비 → 쿨 대비 실제 사용 간격 → 점유율 → 타임라인. 수치 표는 모두 "전체 수치 보기"로 접는다.
+  - 랭커 대비: "랭커 분포 속 내 위치" 차트(`renderRankerDistribution`, 랭커 25~75% 띠·중앙값 선·내 값 점, 랭커 중앙값 = 100%로 맞춤, 탭으로 분당 시전 수 / 초 환산 전환, 하위 25% 미만은 산호색 점으로 위에), 함께 쓰는 스킬 묶음 칩(절반 넘게 따로 쓰면 산호), 극딜 순서 칩 두 줄(랭커 표준 / 내 첫 극딜, 어긋난 스킬은 금색). 기간을 모르면(목록을 거치지 않음) 안내만 한다.
+  - 쿨 대비 실제 사용 간격(`renderCooldownUsage`): 중앙 사용 간격 ÷ 실효 쿨. 1.15배 이하 청록, 1.5배 이하 금색, 그 이상 산호. 판단 제외 스킬은 회색으로 아래에 둔다. 제외 기준은 `CooldownReport.Row.usageExclusion`으로 서버가 준다(놓친 시전과 같은 `CooldownEligibility` 기준: 쿨 모름 / 15초 미만 / 쿨 변동).
+  - 차트 데이터는 `analysis-data` 스크립트(`ReplayPageController.AnalysisChartData`)로 넘긴다.
 - `SequenceSegment`(domain): `sequence_key`가 같은 시전을 기록 순서대로 묶어 실행 구간을 만든다. 사이에 끼어든 일반 시전은 무시하고, 같은 키의 직전 시전과 10초(`MAX_GAP_MS`)보다 멀면 새 실행으로 본다. 실측으로 확인한 실행 안의 간격은 1.1초 이하, 실행 사이 간격은 52.8초 이상이다. `Replay.getSequenceSegments()` → `ReplayDetail.sequenceSegments`.
 
 - 테스트: `SingleFlightTest`(CountDownLatch로 동시성 검증), `SkillNameTest`, `NexonDatesTest`, `SequenceSegmentTest`, `KoreanNumberFormatTest`, `SkillTextTest`, `StandardCooldownCalculatorTest`, `NexonCharacterSpecParserTest`(샘플 `src/test/resources/nexon/character-info-kali.json`: 칼리얏 원문에서 basic, final_stat, character_skill만 남김)

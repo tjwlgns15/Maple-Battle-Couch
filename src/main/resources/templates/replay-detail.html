@@ -10,6 +10,7 @@
         </p>
         <a class="button-link" th:href="@{/compare/select(base=${r.replayId()})}">다른 기록과 비교</a>
     </div>
+    <p class="eyebrow">Replay Detail</p>
     <h1>
         <span th:text="${r.characterName()}">캐릭터</span>
         <span class="muted" th:text="${r.characterClass()} + ' · Lv.' + ${r.characterLevel()}">칼리 · Lv.285</span>
@@ -40,12 +41,31 @@
         </div>
     </section>
 
-    <section class="panel diagnosis" th:with="d=${diagnosis}, playSec=${r.totalPlayTimeMs() / 1000.0}">
-        <h2>진단</h2>
-        <p class="muted small">
-            손해는 평균 DPS로 몇 초 치인지(초 환산)로 나타냅니다. 1초 미만은 측정 오차와 구분하기 어려워 표시하지 않습니다.
-        </p>
-        <p th:if="${#lists.isEmpty(d.findings())}" class="empty-inline">1초 이상 손해가 나는 문제를 찾지 못했습니다.</p>
+    <nav class="section-nav" aria-label="섹션 이동">
+        <a href="#diagnosis">진단</a>
+        <a href="#ranker">랭커 대비</a>
+        <a href="#cooldown">쿨 사용</a>
+        <a href="#share">점유율</a>
+        <a href="#timeline">타임라인</a>
+    </nav>
+
+    <section id="diagnosis" class="panel diagnosis" th:with="d=${diagnosis}, playSec=${r.totalPlayTimeMs() / 1000.0}">
+        <h2 data-label="Diagnosis">진단</h2>
+        <div class="verdict" th:if="${#lists.isEmpty(d.findings())}">
+            <span class="verdict-icon good">✓</span>
+            <div>
+                <strong>1초 이상 손해가 나는 문제를 찾지 못했습니다.</strong>
+                <p class="muted small">참고 항목이 있으면 아래에서 펼쳐 볼 수 있습니다.</p>
+            </div>
+        </div>
+        <div class="verdict" th:unless="${#lists.isEmpty(d.findings())}"
+             th:with="total=${#aggregates.sum(d.findings().![impactSeconds()])}">
+            <span class="verdict-icon" th:text="${#lists.size(d.findings())}">3</span>
+            <div>
+                <strong th:text="|고칠 점 ${#lists.size(d.findings())}개 · 합계 ${#numbers.formatDecimal(total, 1, 1)}초 손해 (DPS의 ${#numbers.formatDecimal(total / playSec * 100, 1, 2)}%)|">고칠 점</strong>
+                <p class="muted small">손해는 평균 DPS로 몇 초 치인지(초 환산)로 나타냅니다. 1초 미만은 측정 오차와 구분하기 어려워 표시하지 않습니다.</p>
+            </div>
+        </div>
         <ol th:unless="${#lists.isEmpty(d.findings())}" class="findings">
             <li th:each="f : ${d.findings()}">
                 <div class="finding-head">
@@ -69,149 +89,175 @@
         </details>
     </section>
 
-    <section class="panel" th:with="st=${standing}">
-        <h2>랭커 대비</h2>
+    <section id="ranker" class="panel" th:with="st=${standing}">
+        <h2 data-label="Ranker Standing">랭커 대비</h2>
         <p th:unless="${st.isAvailable()}" class="empty-inline" th:text="${st.unavailableReason()}">표본 없음</p>
         <th:block th:if="${st.isAvailable()}">
             <p class="muted small">
                 같은 직업 <span th:text="${st.periodNo()}">4</span>기 기록이 있는 종합 랭킹(레벨 순) 상위 캐릭터
                 <b th:text="${st.sampleCount()} + '명'">7명</b>과 비교했습니다. 레벨 순위라 실력 순위와는 다를 수 있습니다.
                 <span th:unless="${st.reliable()}" class="negative">표본이 5명 미만이라 통계 진단은 하지 않았습니다.</span>
-                분당 시전 수가 랭커 하위 25%보다 낮은 칸은 강조했습니다.
+            </p>
+
+            <h3 class="chart-title">랭커 분포 속 내 위치</h3>
+            <p class="muted small">
+                옅은 띠는 랭커 가운데 50%(25~75%), 세로선은 랭커 중앙값, 점은 내 값입니다. 스킬마다 눈금이 달라 랭커 중앙값을 100%로 맞췄습니다.
+                <b class="negative">산호색 점</b>은 랭커 하위 25%보다 낮은 스킬입니다.
+            </p>
+            <div class="tabs" role="tablist" aria-label="비교 지표">
+                <button type="button" class="tab active" role="tab" aria-selected="true" data-metric="rate">분당 시전 수</button>
+                <button type="button" class="tab" role="tab" aria-selected="false" data-metric="seconds">딜 비중(초 환산)</button>
+            </div>
+            <div id="ranker-chart" class="chart"></div>
+
+            <th:block th:unless="${#lists.isEmpty(st.groups())}">
+                <h3 class="chart-title">랭커 다수가 함께 쓰는 스킬 묶음</h3>
+                <p class="muted small">
+                    랭커 대부분이 1초 안에 같이 쓰는 스킬입니다. 칩의 숫자는 이 기록에서 묶음의 다른 스킬과 함께 쓴 횟수 / 전체 시전 수이고,
+                    <b class="negative">산호색</b>은 절반 넘게 따로 쓴 스킬입니다.
+                </p>
+                <div class="chip-group" th:each="group : ${st.groups()}">
+                    <span class="chip-caption" th:text="|랭커 ${#numbers.formatDecimal(group.minPairedRate() * 100, 1, 0)}%↑|">랭커 91%↑</span>
+                    <span class="chip" th:each="m : ${group.members()}" th:classappend="${m.isSeparated()} ? 'off' : ''">
+                        <span th:text="${m.skillName()}">스틱스</span>
+                        <small th:text="|${m.myTogether()}/${m.myCasts()}|">0/3</small>
+                    </span>
+                </div>
+            </th:block>
+
+            <th:block th:unless="${#lists.isEmpty(st.burstOrder())}">
+                <h3 class="chart-title">극딜 순서</h3>
+                <p class="muted small">
+                    랭커 극딜 <span th:text="${st.burstCount()}">33</span>회에서 절반 이상 나온 스킬을 평균적인 순서대로 놓은 것이 표준 순서입니다.
+                    <b class="gold">금색</b>은 한쪽 순서에만 그 자리에 있는 스킬(빠졌거나 순서가 다른 스킬)입니다.
+                    1초 안에 매크로로 함께 나가는 스킬끼리의 앞뒤는 큰 의미가 없습니다.
+                </p>
+                <div class="order-row">
+                    <span class="order-label">랭커 표준</span>
+                    <div class="chip-row">
+                        <th:block th:each="o : ${st.burstOrder()}">
+                            <span class="chip numbered" th:if="${o.standard() != null}" th:classappend="${o.isMatch()} ? '' : 'diff'"
+                                  th:text="${o.standard()}"
+                                  th:title="${o.standardAdoption() == null} ? '' : |랭커 극딜의 ${#numbers.formatDecimal(o.standardAdoption() * 100, 1, 0)}%에서 사용|">스킬</span>
+                        </th:block>
+                    </div>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">내 첫 극딜</span>
+                    <div class="chip-row">
+                        <th:block th:each="o : ${st.burstOrder()}">
+                            <span class="chip numbered mine" th:if="${o.mine() != null}" th:classappend="${o.isMatch()} ? '' : 'diff'"
+                                  th:text="${o.mine()}">스킬</span>
+                        </th:block>
+                    </div>
+                </div>
+            </th:block>
+
+            <details class="notes">
+                <summary>전체 수치 보기</summary>
+                <div class="table-scroll">
+                    <table class="table compact">
+                        <thead>
+                        <tr>
+                            <th>스킬</th>
+                            <th class="right">채택률</th>
+                            <th class="right">분당 시전<br><span class="muted small">나</span></th>
+                            <th class="right">분당 시전<br><span class="muted small">랭커 25 / 50 / 75%</span></th>
+                            <th class="right">초 환산<br><span class="muted small">나</span></th>
+                            <th class="right">초 환산<br><span class="muted small">랭커 25 / 50 / 75%</span></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${st.rows()}">
+                            <td th:text="${row.skillName()}">스킬</td>
+                            <td class="right" th:text="|${#numbers.formatDecimal(row.adoptionRate() * 100, 1, 0)}% (${row.userCount()}명)|">100%</td>
+                            <td class="right strong" th:classappend="${row.belowP25()} ? 'negative' : ''"
+                                th:text="${#numbers.formatDecimal(row.myCastsPerMinute(), 1, 2)}">2.14</td>
+                            <td class="right muted"
+                                th:text="|${#numbers.formatDecimal(row.castsPerMinute().p25(), 1, 2)} / ${#numbers.formatDecimal(row.castsPerMinute().p50(), 1, 2)} / ${#numbers.formatDecimal(row.castsPerMinute().p75(), 1, 2)}|">2 / 2 / 2</td>
+                            <td class="right strong" th:text="${@timeFormat.decimal(row.mySeconds())}">17.2</td>
+                            <td class="right muted"
+                                th:text="${row.seconds() == null} ? '-' : |${@timeFormat.decimal(row.seconds().p25())} / ${@timeFormat.decimal(row.seconds().p50())} / ${@timeFormat.decimal(row.seconds().p75())}|">1 / 2 / 3</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </th:block>
+    </section>
+
+    <section id="cooldown" class="panel" th:with="c=${cooldowns}, s=${cooldowns.stats()}">
+        <h2 data-label="Cooldown Usage">쿨 대비 실제 사용 간격</h2>
+        <p class="muted small">
+            스킬마다 실제 사용 간격(중앙값)이 실효 쿨의 몇 배였는지입니다. <b>1.0배</b>면 쿨마다 쓴 것이고, 2.0배면 절반만 쓴 것입니다.
+            <b class="accent">청록</b> 1.15배 이하, <b class="gold">금색</b> 1.5배 이하, <b class="negative">산호</b> 그보다 깁니다.
+            <b class="muted">회색</b>은 쿨이 짧거나(15초 미만) 전투 중에 쿨이 바뀌어 판단하지 않는 스킬입니다.
+            <br>
+            <span th:text="|쿨감 ${@koreanNumberFormat.plain(s.reductionSeconds())}초 · ${@koreanNumberFormat.plain(s.reductionPercent())}% · 미적용 ${@koreanNumberFormat.plain(s.resetChancePercent())}% · 버프 지속시간 +${@koreanNumberFormat.plain(s.buffDurationPercent())}%|">쿨감</span>
+            <span id="cooldown-summary"></span>
+        </p>
+        <div id="cooldown-chart" class="chart"></div>
+        <details class="notes">
+            <summary>전체 쿨타임 표 보기</summary>
+            <p class="muted small">
+                실효 쿨은 % 감소 → 초 감소 순으로 계산합니다(10초 이하 구간은 1초당 5%, 초 감소 하한 5초).
+                "이른 사용"은 실효 쿨보다 0.2초 이상 짧았던 간격 수로, 미적용 발동이나 오블리비온처럼 쿨이 바뀌는 효과의 흔적입니다.
             </p>
             <div class="table-scroll">
                 <table class="table compact">
                     <thead>
                     <tr>
                         <th>스킬</th>
-                        <th class="right">채택률</th>
-                        <th class="right">분당 시전<br><span class="muted small">나</span></th>
-                        <th class="right">분당 시전<br><span class="muted small">랭커 25 / 50 / 75%</span></th>
-                        <th class="right">초 환산<br><span class="muted small">나</span></th>
-                        <th class="right">초 환산<br><span class="muted small">랭커 25 / 50 / 75%</span></th>
+                        <th class="right">레벨</th>
+                        <th class="right">기본 쿨</th>
+                        <th class="right">실효 쿨</th>
+                        <th class="right">시전</th>
+                        <th class="right">최소 간격</th>
+                        <th class="right">중앙 간격</th>
+                        <th class="right">이른 사용</th>
+                        <th>비고</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="row : ${st.rows()}">
+                    <tr th:each="row : ${c.rows()}">
                         <td th:text="${row.skillName()}">스킬</td>
-                        <td class="right" th:text="|${#numbers.formatDecimal(row.adoptionRate() * 100, 1, 0)}% (${row.userCount()}명)|">100%</td>
-                        <td class="right strong" th:classappend="${row.belowP25()} ? 'negative' : ''"
-                            th:text="${#numbers.formatDecimal(row.myCastsPerMinute(), 1, 2)}">2.14</td>
-                        <td class="right muted"
-                            th:text="|${#numbers.formatDecimal(row.castsPerMinute().p25(), 1, 2)} / ${#numbers.formatDecimal(row.castsPerMinute().p50(), 1, 2)} / ${#numbers.formatDecimal(row.castsPerMinute().p75(), 1, 2)}|">2 / 2 / 2</td>
-                        <td class="right strong" th:text="${@timeFormat.decimal(row.mySeconds())}">17.2</td>
-                        <td class="right muted"
-                            th:text="${row.seconds() == null} ? '-' : |${@timeFormat.decimal(row.seconds().p25())} / ${@timeFormat.decimal(row.seconds().p50())} / ${@timeFormat.decimal(row.seconds().p75())}|">1 / 2 / 3</td>
+                        <td class="right" th:text="${row.level()} ?: '-'">30</td>
+                        <td class="right" th:text="${@timeFormat.seconds(row.baseCooldownMs())}">30.0초</td>
+                        <td class="right strong" th:text="${@timeFormat.seconds(row.effectiveCooldownMs())}">23.2초</td>
+                        <td class="right" th:text="${row.castCount()}">12</td>
+                        <td class="right" th:text="${@timeFormat.seconds(row.minIntervalMs())}">23.9초</td>
+                        <td class="right" th:text="${@timeFormat.seconds(row.medianIntervalMs())}">25.0초</td>
+                        <td class="right" th:text="${row.effectiveCooldownMs() == null ? '-' : row.earlyIntervalCount()}">0</td>
+                        <td class="small muted">
+                            <span th:each="note, it : ${row.notes()}" th:text="${note.label()} + (${it.last} ? '' : ', ')"></span>
+                        </td>
                     </tr>
                     </tbody>
                 </table>
             </div>
-            <th:block th:unless="${#lists.isEmpty(st.groups())}">
-                <h3 class="finding-group">랭커 다수가 함께 쓰는 스킬 묶음 (1초 안)</h3>
-                <p class="muted small">숫자는 이 기록에서 묶음의 다른 스킬과 함께 쓴 횟수 / 전체 시전 수입니다. 절반 미만이면 강조했습니다.</p>
-                <ul class="pair-list">
-                    <li th:each="group : ${st.groups()}">
-                        <span class="muted" th:text="|함께 쓰는 랭커 비율 ${#numbers.formatDecimal(group.minPairedRate() * 100, 1, 0)}%↑ :|">함께 쓰는 랭커 비율 91%↑ :</span>
-                        <th:block th:each="m, it : ${group.members()}">
-                            <span th:classappend="${m.isSeparated()} ? 'negative strong' : ''"
-                                  th:text="|${m.skillName()} ${m.myTogether()}/${m.myCasts()}|">스틱스 0/3</span><span th:unless="${it.last}"> · </span>
-                        </th:block>
-                    </li>
-                </ul>
-            </th:block>
-            <th:block th:unless="${#lists.isEmpty(st.burstOrder())}">
-                <h3 class="finding-group">극딜 순서: 내 첫 극딜 vs 랭커 표준</h3>
-                <p class="muted small">
-                    랭커 극딜 <span th:text="${st.burstCount()}">33</span>회에서 절반 이상 나온 스킬을 극딜 안 상대 위치(중앙값) 순으로 나열한 것이 표준 순서입니다.
-                    대부분 시퀀스(매크로) 순서라, 1초 안에 함께 나가는 스킬끼리의 앞뒤는 큰 의미가 없습니다.
-                    강조된 칸은 한쪽 순서에만 그 자리에 있는 스킬입니다.
-                </p>
-                <div class="table-scroll">
-                    <table class="table compact align-table">
-                        <thead>
-                        <tr>
-                            <th class="right">#</th>
-                            <th>내 첫 극딜</th>
-                            <th>랭커 표준</th>
-                            <th class="right">랭커 극딜 채택률</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="o, it : ${st.burstOrder()}">
-                            <td class="right muted" th:text="${it.count}">1</td>
-                            <td th:classappend="${o.isMatch()} ? 'match' : (${o.mine()} != null ? 'only' : '')"
-                                th:text="${o.mine()} ?: ''">스킬</td>
-                            <td th:classappend="${o.isMatch()} ? 'match' : (${o.standard()} != null ? 'only' : '')"
-                                th:text="${o.standard()} ?: ''">스킬</td>
-                            <td class="right muted"
-                                th:text="${o.standardAdoption()} == null ? '' : ${#numbers.formatDecimal(o.standardAdoption() * 100, 1, 0)} + '%'">100%</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </th:block>
-        </th:block>
+        </details>
     </section>
 
-    <section class="panel">
-        <h2>스킬별 데미지 점유율</h2>
+    <section id="share" class="panel">
+        <h2 data-label="Damage Share">스킬별 데미지 점유율</h2>
         <p class="muted small">타임라인에 기록되지 않는 패시브·연동 스킬도 포함합니다.</p>
         <div id="share-chart" class="chart"></div>
     </section>
 
-    <section class="panel">
-        <h2>스킬 사용 타임라인</h2>
+    <section id="timeline" class="panel">
+        <h2 data-label="Skill Timeline">스킬 사용 타임라인</h2>
         <p class="muted small">
-            점은 시전 시작 시각입니다(지속 시간은 기록되지 않습니다). 빨간 음영은 등록한 시퀀스가 실행된 구간, 노란 음영은 자동으로 찾은 극딜 구간입니다(마우스를 올리면 이름이 보입니다). Ctrl+휠로 확대할 수 있습니다.
+            점은 시전 시작 시각입니다(지속 시간은 기록되지 않습니다). 청록 음영은 등록한 시퀀스가 실행된 구간, 보라 음영은 자동으로 찾은 극딜 구간입니다. 주황 점은 오리진, 연보라 점은 어센트 스킬입니다(마우스를 올리면 이름이 보입니다). Ctrl+휠로 확대할 수 있습니다.
             <span th:text="'시퀀스 실행 ' + ${#lists.size(r.sequenceSegments())} + '회 · 시전 ' + ${#lists.size(r.casts())} + '건'"></span>
         </p>
         <div id="timeline-chart" class="chart"></div>
     </section>
 
-    <section class="panel" th:with="c=${cooldowns}, s=${cooldowns.stats()}">
-        <h2>스킬 쿨타임</h2>
-        <p class="muted small">
-            <span th:text="|쿨감 ${@koreanNumberFormat.plain(s.reductionSeconds())}초 · ${@koreanNumberFormat.plain(s.reductionPercent())}% · 미적용 ${@koreanNumberFormat.plain(s.resetChancePercent())}% · 버프 지속시간 +${@koreanNumberFormat.plain(s.buffDurationPercent())}%|">쿨감</span><br>
-            실효 쿨은 % 감소 → 초 감소 순으로 계산합니다(10초 이하 구간은 1초당 5%, 초 감소 하한 5초).
-            "이른 사용"은 실효 쿨보다 0.2초 이상 짧았던 간격 수로, 미적용 발동이나 오블리비온처럼 쿨이 바뀌는 효과의 흔적입니다.
-        </p>
-        <div class="table-scroll">
-            <table class="table compact">
-                <thead>
-                <tr>
-                    <th>스킬</th>
-                    <th class="right">레벨</th>
-                    <th class="right">기본 쿨</th>
-                    <th class="right">실효 쿨</th>
-                    <th class="right">시전</th>
-                    <th class="right">최소 간격</th>
-                    <th class="right">중앙 간격</th>
-                    <th class="right">이른 사용</th>
-                    <th>비고</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="row : ${c.rows()}">
-                    <td th:text="${row.skillName()}">스킬</td>
-                    <td class="right" th:text="${row.level()} ?: '-'">30</td>
-                    <td class="right" th:text="${@timeFormat.seconds(row.baseCooldownMs())}">30.0초</td>
-                    <td class="right strong" th:text="${@timeFormat.seconds(row.effectiveCooldownMs())}">23.2초</td>
-                    <td class="right" th:text="${row.castCount()}">12</td>
-                    <td class="right" th:text="${@timeFormat.seconds(row.minIntervalMs())}">23.9초</td>
-                    <td class="right" th:text="${@timeFormat.seconds(row.medianIntervalMs())}">25.0초</td>
-                    <td class="right" th:text="${row.effectiveCooldownMs() == null ? '-' : row.earlyIntervalCount()}">0</td>
-                    <td class="small muted">
-                        <span th:each="note, it : ${row.notes()}" th:text="${note.label()} + (${it.last} ? '' : ', ')"></span>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
 </main>
 
 <script id="replay-data" type="application/json" th:utext="${replayJson}"></script>
 <script id="burst-data" type="application/json" th:utext="${burstJson}"></script>
+<script id="analysis-data" type="application/json" th:utext="${analysisJson}"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script th:src="@{/js/charts.js}"></script>
 <script th:src="@{/js/replay-detail.js}"></script>

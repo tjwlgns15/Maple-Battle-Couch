@@ -4,13 +4,13 @@ import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 
 /** 시전 수·쿨 기반 규칙이 판단할 수 있는 스킬인지 가린다. */
-final class CooldownEligibility {
+public final class CooldownEligibility {
 
     /**
      * 실효 쿨이 이보다 짧은 스킬은 제외한다. 짧은 쿨 스킬끼리는 같은 시전 시간을 두고 경쟁하므로
      * 쿨마다 쓰지 못한 것이나 시전 수가 적은 것을 손해로 보기 어렵다. (칼리: 크레센텀 4.7초, 차크람 스윕 5.0초)
      */
-    static final long MIN_COOLDOWN_MS = 10_000;
+    public static final long MIN_COOLDOWN_MS = 10_000;
 
     /**
      * 내 기록만 보는 절대 기준(놓친 시전)에 쓰는 최소 쿨. 쿨 11~12초 스킬은 랭커 전원이 시전 대비 40~75%를 "놓쳤다"
@@ -18,7 +18,7 @@ final class CooldownEligibility {
      * 쿨 23초 이상인 판데모니움은 칼리 랭커 11명 모두 0~2회였다.
      * 랭커·기준 기록과 비교하는 규칙은 같은 손실이 기준 쪽에도 있어 상쇄되므로 {@link #MIN_COOLDOWN_MS}를 쓴다.
      */
-    static final long MIN_ABSOLUTE_COOLDOWN_MS = 15_000;
+    public static final long MIN_ABSOLUTE_COOLDOWN_MS = 15_000;
 
     /** "이른 사용" 비율이 미적용 확률보다 이만큼 높으면 쿨이 실행 중에 바뀌는 스킬로 본다. */
     static final double EARLY_RATIO_MARGIN = 0.2;
@@ -29,21 +29,21 @@ final class CooldownEligibility {
     private CooldownEligibility() {
     }
 
-    static boolean hasTrackableCooldown(SkillUsage skill) {
+    public static boolean hasTrackableCooldown(SkillUsage skill) {
         return skill.hasCooldown() && skill.effectiveCooldownMs() >= MIN_COOLDOWN_MS;
     }
 
     /** 쿨마다 쓰는 것을 이상으로 삼아도 되는 스킬인지 (절대 기준 규칙용) */
-    static boolean hasAbsolutelyTrackableCooldown(SkillUsage skill) {
+    public static boolean hasAbsolutelyTrackableCooldown(SkillUsage skill) {
         return skill.hasCooldown() && skill.effectiveCooldownMs() >= MIN_ABSOLUTE_COOLDOWN_MS;
     }
 
-    static boolean hasDynamicCooldown(SkillUsage skill, AnalysisContext context) {
+    public static boolean hasDynamicCooldown(SkillUsage skill, AnalysisContext context) {
         return skill.castCount() - 1 >= MIN_INTERVALS_FOR_RATIO
                 && skill.earlyIntervalRatio() > context.cooldownStats().resetChancePercent() / 100 + EARLY_RATIO_MARGIN;
     }
 
-    static boolean isComparable(SkillUsage skill, AnalysisContext context) {
+    public static boolean isComparable(SkillUsage skill, AnalysisContext context) {
         return skill.castCount() > 0 && hasTrackableCooldown(skill) && !hasDynamicCooldown(skill, context);
     }
 }

@@ -1,5 +1,7 @@
 package com.battlecoach.replay.web;
 
+import java.util.List;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +12,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.battlecoach.replay.application.CharacterReplayService;
 import com.battlecoach.replay.application.ReplayAnalysisService;
 import com.battlecoach.replay.application.ReplayQueryService;
+import com.battlecoach.replay.application.dto.CooldownReport;
+import com.battlecoach.replay.application.dto.RankerStanding;
 import com.battlecoach.replay.application.dto.ReplayAnalysis;
 import com.battlecoach.replay.application.dto.ReplayDetail;
 import com.battlecoach.replay.domain.CharacterName;
@@ -56,6 +60,12 @@ public class ReplayPageController {
         model.addAttribute("standing", analysis.rankerStanding());
         model.addAttribute("replayJson", scriptJsonWriter.write(replay));
         model.addAttribute("burstJson", scriptJsonWriter.write(analysis.bursts()));
+        model.addAttribute("analysisJson", scriptJsonWriter.write(new AnalysisChartData(
+                analysis.rankerStanding().rows(), analysis.cooldowns().rows())));
         return "replay-detail";
+    }
+
+    /** 상세 화면 분석 차트(랭커 분포 위치, 쿨 대비 사용 간격)에 필요한 데이터 */
+    public record AnalysisChartData(List<RankerStanding.Row> standing, List<CooldownReport.Row> cooldowns) {
     }
 }

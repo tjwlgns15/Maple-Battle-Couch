@@ -3,10 +3,80 @@
 <head th:replace="~{fragments :: head('연무장 기록 분석')}"></head>
 <body>
 <main class="hero">
+    <!-- 연무장(구름 위 하늘 신전)의 분위기를 참고해 직접 그린 장식. 게임 이미지는 쓰지 않는다. -->
+    <div class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice">
+            <defs>
+                <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#4fd6ff" stop-opacity="0"/>
+                    <stop offset="0.35" stop-color="#8fe6ff" stop-opacity="0.35"/>
+                    <stop offset="1" stop-color="#4fd6ff" stop-opacity="0.05"/>
+                </linearGradient>
+                <linearGradient id="stone" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stop-color="#1b2552"/>
+                    <stop offset="0.5" stop-color="#2c3a74"/>
+                    <stop offset="1" stop-color="#151d44"/>
+                </linearGradient>
+                <radialGradient id="flame">
+                    <stop offset="0" stop-color="#ffe2b0"/>
+                    <stop offset="0.45" stop-color="#ff8f6e" stop-opacity="0.8"/>
+                    <stop offset="1" stop-color="#ff8f6e" stop-opacity="0"/>
+                </radialGradient>
+                <radialGradient id="orb">
+                    <stop offset="0" stop-color="#e6f9ff"/>
+                    <stop offset="0.4" stop-color="#4fd6ff" stop-opacity="0.9"/>
+                    <stop offset="1" stop-color="#4fd6ff" stop-opacity="0"/>
+                </radialGradient>
+                <radialGradient id="cloud">
+                    <stop offset="0" stop-color="#c9d8ff" stop-opacity="0.22"/>
+                    <stop offset="1" stop-color="#c9d8ff" stop-opacity="0"/>
+                </radialGradient>
+                <g id="pillar">
+                    <rect x="-18" y="0" width="36" height="300" fill="url(#stone)"/>
+                    <rect x="-28" y="-14" width="56" height="16" rx="3" fill="#2f3f7c"/>
+                    <rect x="-24" y="-26" width="48" height="12" rx="3" fill="#24336a"/>
+                    <ellipse cx="0" cy="-40" rx="26" ry="30" fill="url(#flame)"/>
+                </g>
+            </defs>
+
+            <!-- 빛기둥 -->
+            <polygon class="beam" points="560,0 640,0 700,640 500,640" fill="url(#beam)"/>
+
+            <!-- 돌기둥: 뒤쪽은 작고 흐리게 -->
+            <g opacity="0.45">
+                <use href="#pillar" transform="translate(360 420) scale(0.7)"/>
+                <use href="#pillar" transform="translate(840 420) scale(0.7)"/>
+            </g>
+            <g opacity="0.8">
+                <use href="#pillar" transform="translate(230 380) scale(0.9)"/>
+                <use href="#pillar" transform="translate(970 380) scale(0.9)"/>
+            </g>
+            <use href="#pillar" transform="translate(80 340)"/>
+            <use href="#pillar" transform="translate(1120 340)"/>
+
+            <!-- 떠 있는 푸른 오브 -->
+            <circle cx="300" cy="250" r="14" fill="url(#orb)"/>
+            <circle cx="905" cy="215" r="11" fill="url(#orb)"/>
+            <circle cx="470" cy="160" r="7" fill="url(#orb)"/>
+            <circle cx="760" cy="300" r="8" fill="url(#orb)"/>
+
+            <!-- 제단 -->
+            <ellipse cx="600" cy="660" rx="260" ry="34" fill="#1c2759" stroke="#4fd6ff" stroke-opacity="0.35"/>
+            <ellipse cx="600" cy="652" rx="190" ry="20" fill="none" stroke="#8fe6ff" stroke-opacity="0.25"/>
+
+            <!-- 운무 -->
+            <ellipse cx="160" cy="760" rx="360" ry="90" fill="url(#cloud)"/>
+            <ellipse cx="620" cy="790" rx="480" ry="110" fill="url(#cloud)"/>
+            <ellipse cx="1080" cy="760" rx="360" ry="90" fill="url(#cloud)"/>
+        </svg>
+    </div>
+
+    <p class="eyebrow">Battle Practice Analyzer</p>
     <h1>Battle Coach</h1>
-    <p class="muted">메이플스토리 연무장 기록을 조회하고 딜 사이클을 분석합니다.</p>
+    <p>연무장 기록을 불러와 딜 사이클을 진단하고, 랭커와 비교합니다.</p>
     <form class="search-large" th:action="@{/search}" method="get">
-        <input type="text" name="characterName" placeholder="캐릭터명을 입력하세요" maxlength="12" required autofocus>
+        <input type="text" name="characterName" placeholder="캐릭터명을 입력하세요" maxlength="12" required autofocus
+               aria-label="캐릭터명">
         <button type="submit">검색</button>
     </form>
     <p class="muted small">넥슨 Open API 데이터는 평균 15분 뒤에 반영됩니다.</p>

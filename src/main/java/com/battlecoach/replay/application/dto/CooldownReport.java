@@ -13,6 +13,7 @@ public record CooldownReport(CooldownStats stats, List<Row> rows) {
 
     /**
      * @param earlyIntervalCount 계산 쿨보다 짧았던 간격 수. 미적용 발동이나 실행 중 쿨 변동(오블리비온 등)의 흔적이다.
+     * @param usageExclusion     "쿨마다 썼는가"를 판단하지 않는 이유. 놓친 시전 진단과 같은 기준이다. 판단하면 null
      */
     public record Row(
             String skillName,
@@ -23,7 +24,8 @@ public record CooldownReport(CooldownStats stats, List<Row> rows) {
             Long minIntervalMs,
             Long medianIntervalMs,
             int earlyIntervalCount,
-            List<Note> notes
+            List<Note> notes,
+            String usageExclusion
     ) {
     }
 

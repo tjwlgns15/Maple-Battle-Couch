@@ -11,6 +11,7 @@ import com.battlecoach.diagnosis.sequence.AlignedPair;
  *
  * @param playTimeScale 기준 기록의 시전 수·초 환산을 내 전투 시간에 맞춘 배율
  * @param burstOrder    첫 극딜의 스킬 순서 정렬 (left = 내 기록, right = 기준 기록)
+ * @param specs         스킬 레벨 비교(스펙). skills 에서 레벨만 떼어 따로 보여준다
  */
 public record ReplayComparison(
         ReplayDetail base,
@@ -18,6 +19,7 @@ public record ReplayComparison(
         double playTimeScale,
         DiagnosisResult diagnosis,
         List<SkillRow> skills,
+        SpecComparison specs,
         List<AlignedPair> burstOrder,
         List<BurstWindow> baseBursts,
         List<BurstWindow> targetBursts

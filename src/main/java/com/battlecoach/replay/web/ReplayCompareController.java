@@ -13,6 +13,7 @@ import com.battlecoach.replay.application.CharacterReplayService;
 import com.battlecoach.replay.application.ReplayComparisonService;
 import com.battlecoach.replay.application.ReplayQueryService;
 import com.battlecoach.replay.application.dto.ReplayComparison;
+import com.battlecoach.replay.application.dto.ReplayComparison.SkillRow;
 import com.battlecoach.replay.application.dto.ReplayDetail;
 import com.battlecoach.replay.application.dto.ReplayListItem;
 import com.battlecoach.replay.domain.CharacterName;
@@ -69,16 +70,23 @@ public class ReplayCompareController {
         model.addAttribute("c", comparison);
         model.addAttribute("chartJson", scriptJsonWriter.write(new CompareChartData(
                 comparison.base(), comparison.baseBursts(),
-                comparison.target(), comparison.targetBursts())));
+                comparison.target(), comparison.targetBursts(),
+                comparison.skills(), comparison.playTimeScale())));
         return "compare";
     }
 
-    /** 비교 화면 타임라인 2개에 필요한 데이터 */
+    /**
+     * 비교 화면 차트(합친 타임라인, 시전 횟수 차이, 딜 비중 차이 원인)에 필요한 데이터
+     *
+     * @param playTimeScale 기준 기록의 시전 수를 내 전투 시간에 맞춘 배율
+     */
     public record CompareChartData(
             ReplayDetail base,
             List<BurstWindow> baseBursts,
             ReplayDetail target,
-            List<BurstWindow> targetBursts
+            List<BurstWindow> targetBursts,
+            List<SkillRow> skills,
+            double playTimeScale
     ) {
     }
 }

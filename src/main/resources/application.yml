@@ -11,6 +11,18 @@ spring:
     url: jdbc:mysql://localhost:3308/battle_coach?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  web:
+    resources:
+      # 정적 파일 주소에 내용 해시를 붙인다(/css/app-<해시>.css). 파일이 바뀌면 주소가 바뀌어 브라우저 캐시가 옛 파일을 쓰지 않는다.
+      # Thymeleaf 의 @{/css/app.css} 링크는 자동으로 해시 주소로 바뀐다.
+      chain:
+        strategy:
+          content:
+            enabled: true
+            paths: /**
+      cache:
+        cachecontrol:
+          max-age: 365d
   jpa:
     open-in-view: false
     hibernate:

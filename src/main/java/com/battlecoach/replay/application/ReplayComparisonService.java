@@ -17,6 +17,7 @@ import com.battlecoach.replay.application.dto.ReplayComparison;
 import com.battlecoach.replay.application.dto.ReplayComparison.SkillRow;
 import com.battlecoach.replay.application.dto.ReplayDetail;
 import com.battlecoach.replay.application.dto.ReplayDetail.CastView;
+import com.battlecoach.replay.application.dto.SpecComparison;
 import com.battlecoach.spec.domain.SkillSpec;
 
 import lombok.RequiredArgsConstructor;
@@ -41,12 +42,14 @@ public class ReplayComparisonService {
         AnalysisContext compared = baseContext.comparedWith(targetContext);
         double scale = baseContext.playTimeScaleTo(targetContext);
 
+        List<SkillRow> skills = skillRows(base, baseContext, target, targetContext, scale);
         return new ReplayComparison(
                 base,
                 target,
                 scale,
                 diagnosisEngine.diagnose(compared),
-                skillRows(base, baseContext, target, targetContext, scale),
+                skills,
+                SpecComparison.from(skills),
                 sequenceAligner.align(
                         burstOrderExtractor.firstBurstOrder(baseContext),
                         burstOrderExtractor.firstBurstOrder(targetContext)),

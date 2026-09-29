@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.SkillUsage;
+import com.battlecoach.diagnosis.rule.CooldownEligibility;
 import com.battlecoach.replay.application.dto.CooldownReport;
 import com.battlecoach.replay.application.dto.CooldownReport.Note;
 import com.battlecoach.replay.application.dto.CooldownReport.Row;
@@ -24,13 +25,27 @@ public class CooldownReportService {
 
     public CooldownReport report(AnalysisContext context) {
         List<Row> rows = context.skills().stream()
-                .map(skill -> toRow(skill, context.spec().find(skill.baseName())))
+                .map(skill -> toRow(skill, context.spec().find(skill.baseName()), usageExclusion(skill, context)))
                 .sorted(ORDER)
                 .toList();
         return new CooldownReport(context.cooldownStats(), rows);
     }
 
-    private static Row toRow(SkillUsage skill, Optional<SkillSpec> spec) {
+    /** 놓친 시전 진단(MissedCastRule)과 같은 기준으로, 쿨마다 썼는지 판단하지 않는 이유를 적는다. */
+    private static String usageExclusion(SkillUsage skill, AnalysisContext context) {
+        if (!skill.hasCooldown()) {
+            return "쿨 모름";
+        }
+        if (!CooldownEligibility.hasAbsolutelyTrackableCooldown(skill)) {
+            return "쿨 15초 미만";
+        }
+        if (CooldownEligibility.hasDynamicCooldown(skill, context)) {
+            return "쿨 변동";
+        }
+        return null;
+    }
+
+    private static Row toRow(SkillUsage skill, Optional<SkillSpec> spec, String usageExclusion) {
         List<Long> intervals = skill.sortedIntervalsMs();
         return new Row(
                 skill.skillName(),
@@ -41,7 +56,8 @@ public class CooldownReportService {
                 intervals.isEmpty() ? null : intervals.get(0),
                 intervals.isEmpty() ? null : intervals.get(intervals.size() / 2),
                 skill.earlyIntervalCount(),
-                notesOf(spec));
+                notesOf(spec),
+                usageExclusion);
     }
 
     private static List<Note> notesOf(Optional<SkillSpec> spec) {
