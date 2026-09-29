@@ -24,13 +24,16 @@ public record HoldTradeoff(
     /**
      * 표본 하나
      *
-     * @param seconds 스킬 초 환산. 데미지 항목이 없으면 null
+     * @param seconds     스킬 초 환산. 데미지 항목이 없으면 null
+     * @param missedCasts {@link com.battlecoach.diagnosis.domain.IdleBreakdown#missedCasts()} 와 같은 값
      */
     public record Point(
             String label,
+            double effectiveCooldownSeconds,
             double heldForBurstSeconds,
             double unusedSeconds,
             int casts,
+            int missedCasts,
             double castsPerMinute,
             Double seconds
     ) {

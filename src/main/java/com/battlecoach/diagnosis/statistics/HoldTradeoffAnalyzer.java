@@ -36,9 +36,11 @@ public class HoldTradeoffAnalyzer {
             IdleBreakdown idle = IdleBreakdown.of(skill, context);
             points.add(new HoldTradeoff.Point(
                     sample.getKey(),
+                    idle.cooldownMs() / 1000.0,
                     idle.heldForBurstMs() / 1000.0,
                     idle.unusedMs() / 1000.0,
                     skill.castCount(),
+                    idle.missedCasts(),
                     skill.castCount() / context.playTimeMinutes(),
                     skill.damage() == null ? null : context.toSeconds(skill.damage())));
         }

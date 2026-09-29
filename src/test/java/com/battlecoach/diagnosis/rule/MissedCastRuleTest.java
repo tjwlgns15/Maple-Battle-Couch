@@ -87,8 +87,8 @@ class MissedCastRuleTest {
 
     @Test
     void 이른_사용_비율이_미적용_확률보다_훨씬_높으면_진단에서_뺀다() {
-        // 쿨 12초인데 간격 5개 중 4개가 1초 → 80% > 27% + 20%p
-        SkillUsage dynamic = skill("차크람 퓨리", 12_000L, 10_000L, 0, 1_000, 2_000, 3_000, 4_000, 90_000);
+        // 쿨 16초인데 간격 5개 중 4개가 1초 → 80% > 27% + 20%p
+        SkillUsage dynamic = skill("서브제로 퍼미네이션", 16_000L, 10_000L, 0, 1_000, 2_000, 3_000, 4_000, 90_000);
 
         assertThat(rule.evaluate(context(List.of(), dynamic))).singleElement()
                 .extracting(Finding::type)
@@ -111,6 +111,14 @@ class MissedCastRuleTest {
         SkillUsage noCooldown = skill("플러리", null, 10_000L, 0, 50_000);
 
         assertThat(rule.evaluate(context(List.of(), shortCooldown, noCooldown))).isEmpty();
+    }
+
+    @Test
+    void 쿨_15초_미만_스킬은_많이_쉬어도_놓친_시전으로_보지_않는다() {
+        // 포 시즌 VI(실효 11초)처럼 랭커 전원이 40~75%를 "놓치는" 짧은 쿨 스킬
+        SkillUsage fourSeasons = skill("포 시즌", 11_000L, 10_000L, 0, 50_000);
+
+        assertThat(rule.evaluate(context(List.of(), fourSeasons))).isEmpty();
     }
 
     private static SkillUsage skill(String name, Long cooldownMs, Long damage, long... castTimes) {

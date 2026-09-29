@@ -18,7 +18,7 @@ import com.battlecoach.diagnosis.domain.SkillUsage;
  * 쿨이 돌아온 뒤 쓰지 않은 시간을 모두 더해 실효 쿨로 나누면 놓친 시전 수다({@link IdleBreakdown}).
  * 놓친 시전 × 1회 평균 데미지를 초로 환산한 값이 영향도다.
  * 쓰지 않은 구간이 극딜 구간 안에서 끝났으면 "극딜 대기"로 따로 적는다. 의도한 대기일 수 있어서다.
- * 대상 스킬 기준은 {@link CooldownEligibility} 를 따른다.
+ * 내 기록만 보는 절대 기준이라 실효 쿨 15초 이상 스킬만 본다({@link CooldownEligibility#MIN_ABSOLUTE_COOLDOWN_MS}).
  */
 @Component
 public class MissedCastRule implements DiagnosisRule {
@@ -27,7 +27,7 @@ public class MissedCastRule implements DiagnosisRule {
     public List<Finding> evaluate(AnalysisContext context) {
         List<Finding> findings = new ArrayList<>();
         for (SkillUsage skill : context.skills()) {
-            if (skill.castCount() == 0 || !CooldownEligibility.hasTrackableCooldown(skill)) {
+            if (skill.castCount() == 0 || !CooldownEligibility.hasAbsolutelyTrackableCooldown(skill)) {
                 continue;
             }
             if (CooldownEligibility.hasDynamicCooldown(skill, context)) {
