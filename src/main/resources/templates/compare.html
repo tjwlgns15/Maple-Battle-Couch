@@ -51,7 +51,8 @@
                             <span class="impact"
                                   th:text="|${#numbers.formatDecimal(f.impactSeconds(), 1, 1)}초 (DPS의 ${#numbers.formatDecimal(f.impactSeconds() / playSec * 100, 1, 2)}%)|">2.6초</span>
                         </div>
-                        <p th:text="${f.message()}">메시지</p>
+                        <p class="advice" th:if="${f.hasAdvice()}" th:text="${f.advice()}">처방</p>
+                        <p class="evidence" th:text="${f.message()}">근거</p>
                     </li>
                 </ol>
             </th:block>
@@ -63,6 +64,7 @@
                     <span class="badge muted-badge" th:text="${n.type().label()}">미보유</span>
                     <strong th:text="${n.skillName()}">스킬</strong>
                     <span th:text="${n.message()}">메시지</span>
+                    <span class="advice-inline" th:if="${n.hasAdvice()}" th:text="'→ ' + ${n.advice()}">처방</span>
                 </li>
             </ul>
         </details>

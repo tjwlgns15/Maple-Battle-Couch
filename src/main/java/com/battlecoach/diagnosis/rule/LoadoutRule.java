@@ -40,6 +40,9 @@ public class LoadoutRule implements DiagnosisRule {
             }
             Optional<SkillSpec> mySpec = context.spec().find(refSkill.baseName());
             FindingType type = mySpec.isPresent() ? FindingType.UNUSED_SKILL : FindingType.MISSING_SKILL;
+            String advice = mySpec.isPresent()
+                    ? "키 설정이나 시퀀스에 넣어 쿨마다 쓰세요."
+                    : "스펙(스킬 보유·해금) 차이라 운용으로는 줄일 수 없습니다.";
             String message = mySpec
                     .map(spec -> String.format(Locale.ROOT,
                             "기준 기록은 %d회 썼는데 이 기록은 한 번도 쓰지 않았습니다. 스킬은 보유하고 있습니다(Lv%d).",
@@ -49,12 +52,13 @@ public class LoadoutRule implements DiagnosisRule {
                             refSkill.castCount()));
 
             if (refSkill.damage() == null || refSkill.damage() <= 0) {
-                findings.add(Finding.unmeasured(type, refSkill, message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다."));
+                findings.add(Finding.unmeasured(type, refSkill, message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다.")
+                        .withAdvice(advice));
                 continue;
             }
             double estimated = ref.toSeconds(refSkill.damage()) * context.playTimeScaleTo(ref);
             findings.add(Finding.measured(type, refSkill, estimated,
-                    message + " 영향도는 기준 기록의 초 환산으로 추정했습니다."));
+                    message + " 영향도는 기준 기록의 초 환산으로 추정했습니다.").withAdvice(advice));
         }
         return findings;
     }

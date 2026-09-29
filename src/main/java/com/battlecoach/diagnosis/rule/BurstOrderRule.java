@@ -92,7 +92,10 @@ public class BurstOrderRule implements DiagnosisRule {
         return skill.map(s -> Finding.unmeasured(FindingType.BURST_ORDER_REVERSED, s, String.format(Locale.ROOT,
                 "랭커 극딜 %d회 중 %.0f%%가 이 스킬을 %s보다 먼저 썼습니다. 이 기록은 %d번 중 %d번 %s 뒤에 썼습니다.",
                 precedence.orderedCount(), precedence.rate() * 100, afterName,
-                violation.ordered(), violation.reversed(), afterName)));
+                violation.ordered(), violation.reversed(), afterName))
+                .withAdvice(String.format(Locale.ROOT,
+                        "극딜에서 %s %s보다 먼저 쓰세요. 순서가 데미지에 주는 영향은 계산하지 않았습니다.",
+                        KoreanJosa.withObject(s.skillName()), afterName)));
     }
 
     private record Violation(Precedence precedence, int ordered, int reversed) {

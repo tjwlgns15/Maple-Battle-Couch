@@ -52,9 +52,12 @@ public class LinkedPairRule implements DiagnosisRule {
                 continue;
             }
             findings.add(Finding.unmeasured(FindingType.LINKED_PAIR_SEPARATED, skill, String.format(Locale.ROOT,
-                    "두 스킬을 모두 쓴 랭커 %d명 중 %.0f%%가 이 스킬을 %s와 %.0f초 안에 함께 씁니다. 이 기록은 %d/%d회입니다.",
-                    pair.get().bothUsedCount(), pair.get().pairedRate() * 100, partner.get().skillName(),
-                    JobStatisticsCalculator.PAIR_WINDOW_MS / 1000.0, paired, skill.castCount())));
+                    "두 스킬을 모두 쓴 랭커 %d명 중 %.0f%%가 이 스킬을 %s %.0f초 안에 함께 씁니다. 이 기록은 %d/%d회입니다.",
+                    pair.get().bothUsedCount(), pair.get().pairedRate() * 100, KoreanJosa.withAnd(partner.get().skillName()),
+                    JobStatisticsCalculator.PAIR_WINDOW_MS / 1000.0, paired, skill.castCount()))
+                    .withAdvice(String.format(Locale.ROOT,
+                            "%s 같은 시퀀스(매크로)에 넣어 1초 안에 함께 나가게 해 보세요.",
+                            KoreanJosa.withAnd(partner.get().skillName()))));
         }
         return findings;
     }

@@ -129,7 +129,7 @@
 
 ## 7. 현재 구현 상태 (1단계 어댑터·캐시 + 조회 화면)
 
-> `./gradlew build` 통과(테스트 111개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
+> `./gradlew build` 통과(테스트 118개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
 
 ```
 com.battlecoach
@@ -210,6 +210,15 @@ com.battlecoach
   - 랭커 대비: "랭커 분포 속 내 위치" 차트(`renderRankerDistribution`, 랭커 25~75% 띠·중앙값 선·내 값 점, 랭커 중앙값 = 100%로 맞춤, 탭으로 분당 시전 수 / 초 환산 전환, 하위 25% 미만은 산호색 점으로 위에), 함께 쓰는 스킬 묶음 칩(절반 넘게 따로 쓰면 산호), 극딜 순서 칩 두 줄(랭커 표준 / 내 첫 극딜, 어긋난 스킬은 금색). 기간을 모르면(목록을 거치지 않음) 안내만 한다.
   - 쿨 대비 실제 사용 간격(`renderCooldownUsage`): 중앙 사용 간격 ÷ 실효 쿨. 1.15배 이하 청록, 1.5배 이하 금색, 그 이상 산호. 판단 제외 스킬은 회색으로 아래에 둔다. 제외 기준은 `CooldownReport.Row.usageExclusion`으로 서버가 준다(놓친 시전과 같은 `CooldownEligibility` 기준: 쿨 모름 / 15초 미만 / 쿨 변동).
   - 차트 데이터는 `analysis-data` 스크립트(`ReplayPageController.AnalysisChartData`)로 넘긴다.
+- **처방과 쉰 구간 (B1·B2)**
+  - `Finding.advice`: `message`는 근거, `advice`는 할 일이다. 카드에는 처방을 굵게 먼저, 근거를 흐리게 아래에 둔다(상세·비교 화면 모두).
+  - `IdleBreakdown.spans`(`IdleSpan`: 극딜 대기 / 그 외 / 전투 종료 전). 합계 필드는 구간의 합이라 놓친 시전 계산은 그대로다.
+  - `MissedCastAdvisor`: 가장 큰 원인에 맞춰 처방을 고른다. 그 외 → 가장 길게 쉰 구간. 극딜 대기 구간이 쿨보다 길어 "대기 시작 + 쿨 ≤ 극딜 시작"이면 → 그 시각에 한 번 더 쓰라고 한다. 전투 종료 전 → 끝까지 쓰라고 한다.
+    - 시전 수 부족·랭커보다 적은 시전(`adviseShortfall`): 기준이 함께 쓰는 짝을 따로 썼으면 시퀀스 처방을 내고, 쉰 시간 처방을 붙인다. 쉰 시간이 쿨 1회분도 안 되면 원인을 단정하지 않는다.
+    - 칼리 B 스틱스: "데스 블로섬 VI와 같은 시퀀스에 넣으면 랭커 대부분처럼 함께 나갑니다. 극딜을 기다리며 63초를 쉬었습니다. 168초에 한 번 쓰면 극딜 시작(223초) 전에 쿨이 다시 돕니다."
+  - `KoreanJosa`: 스킬 이름 뒤 와/과, 를/을을 받침에 맞춘다(한글이 아닌 글자로 끝나면 받침 없음).
+  - 타임라인: `IdleTimelineAssembler`(대상은 놓친 시전과 같다, 1초 미만 구간은 그리지 않음) → `attachIdleOverlay`(custom 시리즈 막대. 그 외 산호 / 극딜 대기 금색 / 전투 종료 전 회색). 기본은 진단·참고에 나온 스킬만 그리고, "쿨 15초 이상 스킬 모두 보기"로 전체를 그린다. 진단 카드의 "타임라인에서 보기"는 그 줄을 강조하고 가장 긴 쉰 구간 ±20초로 확대한다.
+    - 확대 경계에 걸친 막대가 사라지지 않게 dataZoom `filterMode: 'weakFilter'`. 시전 시리즈에 `id: 'casts'`를 둬서, 나중에 합치는 시리즈가 순서대로 병합되며 덮어쓰지 않게 한다.
 - `SequenceSegment`(domain): `sequence_key`가 같은 시전을 기록 순서대로 묶어 실행 구간을 만든다. 사이에 끼어든 일반 시전은 무시하고, 같은 키의 직전 시전과 10초(`MAX_GAP_MS`)보다 멀면 새 실행으로 본다. 실측으로 확인한 실행 안의 간격은 1.1초 이하, 실행 사이 간격은 52.8초 이상이다. `Replay.getSequenceSegments()` → `ReplayDetail.sequenceSegments`.
 
 - 테스트: `SingleFlightTest`(CountDownLatch로 동시성 검증), `SkillNameTest`, `NexonDatesTest`, `SequenceSegmentTest`, `KoreanNumberFormatTest`, `SkillTextTest`, `StandardCooldownCalculatorTest`, `NexonCharacterSpecParserTest`(샘플 `src/test/resources/nexon/character-info-kali.json`: 칼리 A 원문에서 basic, final_stat, character_skill만 남김)

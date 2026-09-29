@@ -51,23 +51,27 @@ public class CastCountGapRule implements DiagnosisRule {
             if (missing <= 0) {
                 continue;
             }
+            Optional<PairHint> hint = pairHint(skill, context, refSkill, ref);
             String message = String.format(Locale.ROOT,
                     "기준 기록은 %d회(전투 시간 보정 %.1f회) 썼는데 이 기록은 %d회라 약 %d회 부족합니다.%s",
                     refSkill.castCount(), expected, skill.castCount(), missing,
-                    pairHint(skill, context, refSkill, ref));
+                    hint.map(PairHint::sentence).orElse(""));
+            String advice = MissedCastAdvisor.adviseShortfall(skill, context,
+                    hint.map(PairHint::partnerName).orElse(null), "기준 기록").orElse(null);
             if (skill.damage() == null || skill.damage() <= 0) {
                 findings.add(Finding.unmeasured(FindingType.CAST_COUNT_GAP, skill,
-                        message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다."));
+                        message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다.").withAdvice(advice));
                 continue;
             }
             double lostDamage = (double) skill.damage() / skill.castCount() * missing;
-            findings.add(Finding.measured(FindingType.CAST_COUNT_GAP, skill, context.toSeconds(lostDamage), message));
+            findings.add(Finding.measured(FindingType.CAST_COUNT_GAP, skill, context.toSeconds(lostDamage), message)
+                    .withAdvice(advice));
         }
         return findings;
     }
 
     /** 기준 기록의 연동 스킬을 찾아, 이 기록에서 함께 쓴 비율이 더 낮으면 알려준다. */
-    private static String pairHint(SkillUsage skill, AnalysisContext context, SkillUsage refSkill, AnalysisContext ref) {
+    private static Optional<PairHint> pairHint(SkillUsage skill, AnalysisContext context, SkillUsage refSkill, AnalysisContext ref) {
         return ref.skills().stream()
                 .filter(other -> !other.baseName().equals(refSkill.baseName()))
                 .filter(other -> other.castCount() == refSkill.castCount())
@@ -81,11 +85,10 @@ public class CastCountGapRule implements DiagnosisRule {
                         .or(() -> Optional.of(new Pair(pair.partner(), 0)))
                         .filter(mine -> (double) mine.count() / skill.castCount()
                                 < (double) pair.count() / refSkill.castCount())
-                        .map(mine -> String.format(Locale.ROOT,
-                                " 기준 기록은 이 스킬을 %s와 %.0f초 안에 %d/%d회 함께 썼고, 이 기록은 %d/%d회입니다.",
-                                pair.partner().skillName(), PAIR_WINDOW_MS / 1000.0,
-                                pair.count(), refSkill.castCount(), mine.count(), skill.castCount())))
-                .orElse("");
+                        .map(mine -> new PairHint(pair.partner().skillName(), String.format(Locale.ROOT,
+                                " 기준 기록은 이 스킬을 %s %.0f초 안에 %d/%d회 함께 썼고, 이 기록은 %d/%d회입니다.",
+                                KoreanJosa.withAnd(pair.partner().skillName()), PAIR_WINDOW_MS / 1000.0,
+                                pair.count(), refSkill.castCount(), mine.count(), skill.castCount()))));
     }
 
     private static int pairedCount(SkillUsage skill, SkillUsage partner) {
@@ -101,5 +104,8 @@ public class CastCountGapRule implements DiagnosisRule {
     }
 
     private record Pair(SkillUsage partner, int count) {
+    }
+
+    private record PairHint(String partnerName, String sentence) {
     }
 }

@@ -14,6 +14,7 @@ import com.battlecoach.replay.application.ReplayAnalysisService;
 import com.battlecoach.replay.application.ReplayQueryService;
 import com.battlecoach.replay.application.dto.CooldownReport;
 import com.battlecoach.replay.application.dto.RankerStanding;
+import com.battlecoach.replay.application.dto.SkillIdleView;
 import com.battlecoach.replay.application.dto.ReplayAnalysis;
 import com.battlecoach.replay.application.dto.ReplayDetail;
 import com.battlecoach.replay.domain.CharacterName;
@@ -58,14 +59,16 @@ public class ReplayPageController {
         model.addAttribute("diagnosis", analysis.diagnosis());
         model.addAttribute("cooldowns", analysis.cooldowns());
         model.addAttribute("standing", analysis.rankerStanding());
+        model.addAttribute("idleSpans", analysis.idleSpans());
         model.addAttribute("replayJson", scriptJsonWriter.write(replay));
         model.addAttribute("burstJson", scriptJsonWriter.write(analysis.bursts()));
         model.addAttribute("analysisJson", scriptJsonWriter.write(new AnalysisChartData(
-                analysis.rankerStanding().rows(), analysis.cooldowns().rows())));
+                analysis.rankerStanding().rows(), analysis.cooldowns().rows(), analysis.idleSpans())));
         return "replay-detail";
     }
 
-    /** 상세 화면 분석 차트(랭커 분포 위치, 쿨 대비 사용 간격)에 필요한 데이터 */
-    public record AnalysisChartData(List<RankerStanding.Row> standing, List<CooldownReport.Row> cooldowns) {
+    /** 상세 화면 분석 차트(랭커 분포 위치, 쿨 대비 사용 간격, 타임라인 쉰 구간)에 필요한 데이터 */
+    public record AnalysisChartData(List<RankerStanding.Row> standing, List<CooldownReport.Row> cooldowns,
+                                    List<SkillIdleView> idle) {
     }
 }

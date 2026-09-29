@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.DiagnosisEngine;
+import com.battlecoach.diagnosis.domain.DiagnosisResult;
 import com.battlecoach.diagnosis.statistics.JobStatistics;
 import com.battlecoach.diagnosis.statistics.JobStatisticsProvider;
 import com.battlecoach.replay.application.dto.RankerStanding;
@@ -30,6 +31,7 @@ public class ReplayAnalysisService {
     private final ReplayPeriodRecorder replayPeriodRecorder;
     private final JobStatisticsProvider jobStatisticsProvider;
     private final RankerStandingAssembler rankerStandingAssembler;
+    private final IdleTimelineAssembler idleTimelineAssembler;
 
     public ReplayAnalysis analyze(ReplayDetail replay) {
         AnalysisContext context = analysisContextFactory.create(replay);
@@ -51,10 +53,12 @@ public class ReplayAnalysisService {
             }
         }
 
+        DiagnosisResult diagnosis = diagnosisEngine.diagnose(context);
         return new ReplayAnalysis(
-                diagnosisEngine.diagnose(context),
+                diagnosis,
                 context.bursts(),
                 cooldownReportService.report(context),
-                standing);
+                standing,
+                idleTimelineAssembler.assemble(context, diagnosis));
     }
 }

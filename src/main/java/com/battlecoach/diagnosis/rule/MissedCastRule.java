@@ -50,12 +50,14 @@ public class MissedCastRule implements DiagnosisRule {
                 "실효 쿨 %.1f초인데 쿨이 돈 뒤 쓰지 않은 시간이 %.1f초라 약 %d회를 놓쳤습니다. (극딜 대기 %.1f초, 그 외 %.1f초, 전투 종료 전 %.1f초)",
                 seconds(idle.cooldownMs()), seconds(idle.totalMs()), missed,
                 seconds(idle.heldForBurstMs()), seconds(idle.unusedMs()), seconds(idle.tailMs()));
+        String advice = MissedCastAdvisor.advise(idle, context).orElse(null);
         if (skill.damage() == null || skill.damage() <= 0) {
             return Optional.of(Finding.unmeasured(FindingType.MISSED_CAST, skill,
-                    message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다."));
+                    message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다.").withAdvice(advice));
         }
         double lostDamage = (double) skill.damage() / skill.castCount() * missed;
-        return Optional.of(Finding.measured(FindingType.MISSED_CAST, skill, context.toSeconds(lostDamage), message));
+        return Optional.of(Finding.measured(FindingType.MISSED_CAST, skill, context.toSeconds(lostDamage), message)
+                .withAdvice(advice));
     }
 
     private static double seconds(long ms) {

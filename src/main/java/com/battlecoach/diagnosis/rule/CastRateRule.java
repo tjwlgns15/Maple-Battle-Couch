@@ -13,6 +13,7 @@ import com.battlecoach.diagnosis.domain.Finding;
 import com.battlecoach.diagnosis.domain.FindingType;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 import com.battlecoach.diagnosis.statistics.JobStatistics;
+import com.battlecoach.diagnosis.statistics.JobStatisticsCalculator;
 import com.battlecoach.diagnosis.statistics.SkillDistribution;
 
 /**
@@ -49,14 +50,28 @@ public class CastRateRule implements DiagnosisRule {
             String message = String.format(Locale.ROOT,
                     "이 스킬을 쓴 랭커 %d명의 분당 시전 수는 중앙값 %.2f회(하위 25%% %.2f회)인데 이 기록은 %.2f회입니다. 중앙값보다 약 %d회 적게 썼습니다.",
                     distribution.get().userCount(), p50, p25, myRate, missing);
+            String advice = MissedCastAdvisor.adviseShortfall(skill, context,
+                    separatedPartner(skill, context, statistics.get()), "랭커 대부분").orElse(null);
             if (skill.damage() == null || skill.damage() <= 0) {
                 findings.add(Finding.unmeasured(FindingType.CAST_RATE_BELOW_RANKERS, skill,
-                        message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다."));
+                        message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다.").withAdvice(advice));
                 continue;
             }
             double lostDamage = (double) skill.damage() / skill.castCount() * missing;
-            findings.add(Finding.measured(FindingType.CAST_RATE_BELOW_RANKERS, skill, context.toSeconds(lostDamage), message));
+            findings.add(Finding.measured(FindingType.CAST_RATE_BELOW_RANKERS, skill, context.toSeconds(lostDamage), message)
+                    .withAdvice(advice));
         }
         return findings;
+    }
+
+    /** 랭커 대부분이 함께 쓰는 짝을 이 기록은 절반 넘게 따로 썼으면 그 짝의 이름 */
+    private static String separatedPartner(SkillUsage skill, AnalysisContext context, JobStatistics statistics) {
+        return statistics.bestPairFor(skill.baseName())
+                .flatMap(pair -> context.find(pair.partnerBaseName()))
+                .filter(partner -> partner.castCount() > 0)
+                .filter(partner -> skill.pairedCountWith(partner, JobStatisticsCalculator.PAIR_WINDOW_MS)
+                        < skill.castCount() * LinkedPairRule.SEPARATED_RATIO)
+                .map(SkillUsage::skillName)
+                .orElse(null);
     }
 }

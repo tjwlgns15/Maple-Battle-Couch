@@ -185,12 +185,15 @@
                 splitLine: { show: true, lineStyle: { opacity: 0.4 } },
             },
             dataZoom: [
-                { type: 'slider', xAxisIndex: 0, height: 20, bottom: 12, labelFormatter: formatSeconds },
-                { type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: 'ctrl', moveOnMouseWheel: false },
+                // weakFilter: 확대 경계에 걸친 쉰 구간 막대(attachIdleOverlay)도 남긴다
+                { type: 'slider', xAxisIndex: 0, height: 20, bottom: 12, labelFormatter: formatSeconds, filterMode: 'weakFilter' },
+                { type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: 'ctrl', moveOnMouseWheel: false, filterMode: 'weakFilter' },
             ],
             series: [{
+                id: 'casts', // 나중에 겹치는 시리즈가 순서로 합쳐져 덮어쓰지 않게 한다
                 type: 'scatter',
                 symbolSize: 7,
+                z: 2,
                 itemStyle: { color: color('--accent') },
                 data: points,
                 markArea: {
@@ -203,6 +206,94 @@
         });
         adjustTicksOnZoom(chart, maxSec);
         return chart;
+    }
+
+    const IDLE_KIND = {
+        UNUSED: { label: '그 외', color: 'rgba(255, 143, 110, 0.55)' },
+        HELD_FOR_BURST: { label: '극딜 대기', color: 'rgba(255, 207, 102, 0.35)' },
+        TAIL: { label: '전투 종료 전', color: 'rgba(160, 175, 210, 0.30)' },
+    };
+
+    /**
+     * 타임라인 차트 위에 스킬별 "쿨이 돈 뒤 쓰지 않은 구간"을 얇은 가로 막대로 겹친다.
+     * 기본으로는 진단에 나온 스킬만 그리고, showAll 로 대상 스킬 전체를 그린다.
+     * focusSkill 은 그 스킬 줄을 강조하고 가장 긴 쉰 구간 주변으로 확대한다.
+     * @param idleSkills [{ baseName, skillName, effectiveCooldownSeconds, diagnosed, spans: [{startMs, endMs, kind}] }]
+     */
+    function attachIdleOverlay(chart, idleSkills, maxSec) {
+        const rowNames = chart.getOption().yAxis[0].data;
+        const bySkill = new Map(idleSkills.map((s) => [s.baseName, s]));
+        const visible = new Set(idleSkills.filter((s) => s.diagnosed).map((s) => s.baseName));
+        let focused = null;
+
+        const barRenderer = (heightRatio) => (params, api) => {
+            const start = api.coord([api.value(0), api.value(2)]);
+            const end = api.coord([api.value(1), api.value(2)]);
+            const height = api.size([0, 1])[1] * heightRatio;
+            const shape = echarts.graphic.clipRectByRect(
+                { x: start[0], y: start[1] - height / 2, width: Math.max(end[0] - start[0], 1), height },
+                { x: params.coordSys.x, y: params.coordSys.y, width: params.coordSys.width, height: params.coordSys.height });
+            return shape && { type: 'rect', shape, style: api.style() };
+        };
+
+        const idleData = () => [...visible].flatMap((name) => {
+            const skill = bySkill.get(name);
+            const row = rowNames.indexOf(name);
+            if (!skill || row < 0) {
+                return [];
+            }
+            return skill.spans.map((span) => {
+                const kind = IDLE_KIND[span.kind] || IDLE_KIND.UNUSED;
+                const sec = (span.endMs - span.startMs) / 1000;
+                return {
+                    value: [span.startMs / 1000, span.endMs / 1000, row],
+                    name: `${skill.skillName} · ${formatSeconds(span.startMs / 1000)}~${formatSeconds(span.endMs / 1000)} `
+                        + `쿨이 돈 뒤 ${sec.toFixed(1)}초 동안 쓰지 않음 (${kind.label})`,
+                    itemStyle: { color: kind.color },
+                };
+            });
+        });
+
+        const focusData = () => {
+            const row = focused === null ? -1 : rowNames.indexOf(focused);
+            return row < 0 ? [] : [{ value: [0, maxSec, row], itemStyle: { color: 'rgba(79, 214, 255, 0.12)' } }];
+        };
+
+        const update = () => chart.setOption({
+            series: [
+                { id: 'idle-focus', type: 'custom', silent: true, z: 0, renderItem: barRenderer(1), encode: { x: [0, 1], y: 2 }, data: focusData() },
+                { id: 'idle', type: 'custom', z: 1, renderItem: barRenderer(0.36), encode: { x: [0, 1], y: 2 }, data: idleData() },
+            ],
+        });
+        update();
+
+        return {
+            hasSkill: (name) => bySkill.has(name),
+            setShowAll(showAll) {
+                visible.clear();
+                idleSkills.filter((s) => showAll || s.diagnosed || s.baseName === focused)
+                    .forEach((s) => visible.add(s.baseName));
+                update();
+            },
+            focusSkill(name) {
+                focused = name;
+                if (bySkill.has(name)) {
+                    visible.add(name);
+                }
+                update();
+                const spans = bySkill.has(name) ? bySkill.get(name).spans : [];
+                const longest = spans.reduce((a, b) => (!a || b.endMs - b.startMs > a.endMs - a.startMs ? b : a), null);
+                if (longest) {
+                    chart.dispatchAction({
+                        type: 'dataZoom',
+                        startValue: Math.max(0, longest.startMs / 1000 - 20),
+                        endValue: Math.min(maxSec, longest.endMs / 1000 + 20),
+                    });
+                } else {
+                    chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+                }
+            },
+        };
     }
 
     /**
@@ -703,10 +794,15 @@
         let current = tickInterval(maxSec);
         chart.on('datazoom', (event) => {
             const range = event.batch ? event.batch[0] : event;
-            if (range.start === undefined || range.end === undefined) {
+            let visibleSec;
+            if (range.start !== undefined && range.end !== undefined) {
+                visibleSec = maxSec * (range.end - range.start) / 100;
+            } else if (range.startValue !== undefined && range.endValue !== undefined) {
+                visibleSec = range.endValue - range.startValue; // dispatchAction 으로 값 범위를 준 경우
+            } else {
                 return;
             }
-            const next = tickInterval(maxSec * (range.end - range.start) / 100);
+            const next = tickInterval(visibleSec);
             if (next !== current) {
                 current = next;
                 chart.setOption({ xAxis: { interval: next } }, { lazyUpdate: true });
@@ -742,6 +838,6 @@
 
     window.BattleCoachCharts = {
         renderShareChart, renderTimelineChart, renderComparisonTimeline, renderCastGapChart, renderShareGapChart,
-        renderRankerDistribution, renderCooldownUsage, resizeOnWindowChange, readJson,
+        renderRankerDistribution, renderCooldownUsage, attachIdleOverlay, resizeOnWindowChange, readJson,
     };
 })();

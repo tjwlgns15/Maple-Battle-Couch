@@ -74,7 +74,9 @@
                     <span class="impact"
                           th:text="|${#numbers.formatDecimal(f.impactSeconds(), 1, 1)}초 (DPS의 ${#numbers.formatDecimal(f.impactSeconds() / playSec * 100, 1, 2)}%)|">2.9초</span>
                 </div>
-                <p th:text="${f.message()}">메시지</p>
+                <p class="advice" th:if="${f.hasAdvice()}" th:text="${f.advice()}">처방</p>
+                <p class="evidence" th:text="${f.message()}">근거</p>
+                <button type="button" class="link-button small" th:attr="data-focus-skill=${f.skillBaseName()}">타임라인에서 보기 →</button>
             </li>
         </ol>
         <details th:unless="${#lists.isEmpty(d.notes())}" class="notes">
@@ -84,6 +86,8 @@
                     <span class="badge muted-badge" th:text="${n.type().label()}">놓친 시전</span>
                     <strong th:text="${n.skillName()}">스킬</strong>
                     <span th:text="${n.message()}">메시지</span>
+                    <span class="advice-inline" th:if="${n.hasAdvice()}" th:text="'→ ' + ${n.advice()}">처방</span>
+                    <button type="button" class="link-button small" th:attr="data-focus-skill=${n.skillBaseName()}">타임라인에서 보기 →</button>
                 </li>
             </ul>
         </details>
@@ -282,6 +286,16 @@
             점은 시전 시작 시각입니다(지속 시간은 기록되지 않습니다). 청록 음영은 등록한 시퀀스가 실행된 구간, 보라 음영은 자동으로 찾은 극딜 구간입니다. 주황 점은 오리진, 연보라 점은 어센트 스킬입니다(마우스를 올리면 이름이 보입니다). Ctrl+휠로 확대할 수 있습니다.
             <span th:text="'시퀀스 실행 ' + ${#lists.size(r.sequenceSegments())} + '회 · 시전 ' + ${#lists.size(r.casts())} + '건'"></span>
         </p>
+        <div class="idle-legend" th:unless="${#lists.isEmpty(idleSpans)}">
+            <span class="muted small">쿨이 돈 뒤 쓰지 않은 구간:</span>
+            <span class="legend-swatch unused"></span><span class="small">그 외</span>
+            <span class="legend-swatch held"></span><span class="small">극딜 대기</span>
+            <span class="legend-swatch tail"></span><span class="small">전투 종료 전</span>
+            <label class="toggle small">
+                <input type="checkbox" id="idle-show-all"> 쿨 15초 이상 스킬 모두 보기
+            </label>
+            <span class="muted small">(기본은 진단에 나온 스킬만. 1초 미만 공백은 그리지 않습니다)</span>
+        </div>
         <div id="timeline-chart" class="chart"></div>
     </section>
 

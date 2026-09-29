@@ -994,3 +994,74 @@ main section[id] {
     font-size: 1.35rem;
     margin: 0 4px;
 }
+
+/* ---------- 처방과 근거 ---------- */
+.findings p.advice {
+    margin: 8px 0 4px;
+    color: var(--text);
+    font-weight: 600;
+    padding-left: 10px;
+    border-left: 3px solid var(--lime);
+}
+
+.findings p.evidence {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.advice-inline {
+    display: block;
+    margin-top: 2px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.link-button {
+    margin-top: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    cursor: pointer;
+    font: inherit;
+}
+
+.link-button:hover,
+.link-button:focus-visible {
+    text-decoration: underline;
+}
+
+/* ---------- 타임라인 쉰 구간 범례 ---------- */
+.idle-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 4px 0 8px;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 18px;
+    height: 7px;
+    border-radius: 2px;
+}
+
+.legend-swatch.unused {
+    background: rgba(255, 143, 110, 0.55);
+}
+
+.legend-swatch.held {
+    background: rgba(255, 207, 102, 0.35);
+}
+
+.legend-swatch.tail {
+    background: rgba(160, 175, 210, 0.30);
+}
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
