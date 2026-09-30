@@ -89,7 +89,7 @@ class ComparisonRuleTest {
 
     private static CharacterSpec spec(String... owned) {
         return CharacterSpec.of(STATS, Arrays.stream(owned)
-                .map(name -> new SkillSpec(name, name, 30, 120_000L, null, true, true, false))
+                .map(name -> new SkillSpec(name, name, 30, 120_000L, null, true, true, false, false))
                 .toList());
     }
 

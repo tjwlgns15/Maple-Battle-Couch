@@ -14,8 +14,10 @@ import com.battlecoach.diagnosis.domain.SkillUsage;
 
 /**
  * 쿨이 긴 스킬이 짧은 시간에 몰린 곳을 극딜 시작으로 본다. 직업별 극딜 스킬 목록 없이 동작한다.
- * 구간 길이는 몰린 스킬들의 효과 텍스트 "N초 동안" 중앙값이다. (버프 지속시간 증가는 반영하지 않아 보수적이다)
- * 칼리 2명에서는 120초 주기 극딜 3회를 찾았다. 60초 주기 준극딜은 대상이 아니다.
+ * 구간 길이는 몰린 스킬들의 지속시간 중앙값, 즉 몰린 스킬 절반 이상이 켜져 있는 동안이다.
+ * 지속시간은 버프면 버프 지속시간 증가를 반영하고, 소환·영역은 반영하지 않는다({@code SkillSpec#effectiveDurationMs}).
+ * 칼리(버프 지속 79%): 레이스 오브 갓·매직 서킷 107초, 그란디스 72초, 오블리비온·레조네이트 54초, 리스트레인트 링 15초.
+ * 반영 뒤 칼리 극딜은 40초 안팎에서 54~72초가 됐다. 5개 직업 모두 120초 주기 3회를 찾는다. 60초 주기 준극딜은 대상이 아니다.
  */
 @Component
 public class CooldownClusterBurstDetector implements BurstDetector {
@@ -54,8 +56,13 @@ public class CooldownClusterBurstDetector implements BurstDetector {
         return List.copyOf(windows);
     }
 
+    /**
+     * 지속시간이 쿨보다 긴 스킬은 극딜 버프가 아니라 상시 버프라 뺀다.
+     * 예: 쓸만한 샤프 아이즈(쿨 180초, 지속 270초)가 극딜 때 함께 나가면 아크메이지(썬,콜) 극딜이 264초로 늘어났다.
+     */
     private static Long medianDuration(Set<SkillUsage> cluster) {
         List<Long> durations = cluster.stream()
+                .filter(skill -> skill.durationMs() != null && skill.durationMs() < skill.effectiveCooldownMs())
                 .map(SkillUsage::durationMs)
                 .filter(Objects::nonNull)
                 .sorted()

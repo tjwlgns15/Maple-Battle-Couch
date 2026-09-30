@@ -43,13 +43,13 @@ class StandardCooldownCalculatorTest {
 
     @Test
     void 쿨_표기가_없으면_계산할_수_없다() {
-        SkillSpec noCooldown = new SkillSpec("스파크", "스파크", 5, null, null, true, true, false);
+        SkillSpec noCooldown = new SkillSpec("스파크", "스파크", 5, null, null, true, true, false, false);
 
         assertThatThrownBy(() -> calculator.effectiveCooldownMs(noCooldown, CooldownStats.of(5, 6, 0, 0)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     private static SkillSpec spec(long baseMs, boolean reducible) {
-        return new SkillSpec("테스트", "테스트", 30, baseMs, null, reducible, true, false);
+        return new SkillSpec("테스트", "테스트", 30, baseMs, null, reducible, true, false, false);
     }
 }

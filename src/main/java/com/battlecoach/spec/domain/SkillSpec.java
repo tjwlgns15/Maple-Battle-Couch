@@ -12,6 +12,7 @@ import com.battlecoach.replay.domain.SkillName;
  * @param cooldownReducible  재사용 대기시간 감소(초·%)를 받는지
  * @param cooldownResettable 재사용 대기시간 초기화(미적용 포함)를 받는지. 미검증: 미적용이 초기화와 같은 취급인지
  * @param reactivatable      지속 중 다시 눌러 효과를 바꾸는 스킬인지. 다시 누른 것도 시전으로 기록된다.
+ * @param buffDurationExtendable durationMs 가 버프 지속시간이라 버프 지속시간 증가를 받는지
  */
 public record SkillSpec(
         String skillName,
@@ -21,7 +22,8 @@ public record SkillSpec(
         Long durationMs,
         boolean cooldownReducible,
         boolean cooldownResettable,
-        boolean reactivatable
+        boolean reactivatable,
+        boolean buffDurationExtendable
 ) {
 
     public static SkillSpec of(String skillName, int level, SkillText text) {
@@ -35,7 +37,16 @@ public record SkillSpec(
                 duration.isPresent() ? duration.getAsLong() : null,
                 !text.refusesCooldownReduction(),
                 !text.refusesCooldownReset(),
-                text.isReactivatable());
+                text.isReactivatable(),
+                text.isBuffDurationExtendable());
+    }
+
+    /** 버프 지속시간 증가를 반영한 지속시간. 지속시간이 없으면 null */
+    public Long effectiveDurationMs(CooldownStats stats) {
+        if (durationMs == null || !buffDurationExtendable) {
+            return durationMs;
+        }
+        return Math.round(durationMs * (1 + stats.buffDurationPercent() / 100));
     }
 
     public boolean hasCooldown() {

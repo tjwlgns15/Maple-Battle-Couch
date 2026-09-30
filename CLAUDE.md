@@ -129,7 +129,7 @@
 
 ## 7. 현재 구현 상태 (1단계 어댑터·캐시 + 조회 화면)
 
-> `./gradlew build` 통과(테스트 118개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
+> `./gradlew build` 통과(테스트 126개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
 
 ```
 com.battlecoach
@@ -176,7 +176,12 @@ com.battlecoach
 - `replay.application.CooldownReportService` → `CooldownReport`: 스킬별 기본·실효 쿨, 시전 수, 실측 최소·중앙 간격, "이른 사용"(실효 쿨보다 0.2초 넘게 짧은 간격 수), 비고. 상세 화면의 "스킬 쿨타임" 표로 보여준다.
 - `diagnosis` 패키지 (단일 진단. 비교 진단도 같은 엔진을 쓴다)
   - `domain`: `SkillUsage`(스킬별 시전 시각, 데미지, 실효 쿨, 지속시간, 이른 사용 비율), `BurstWindow`, `AnalysisContext`(초 환산 `toSeconds`), `Finding`(영향도 null = 참고), `FindingType`, `DiagnosisRule`, `DiagnosisEngine`(1초 미만 제거, 영향도 순), `DiagnosisResult(findings, notes)`
-  - `burst`: `BurstDetector` / `CooldownClusterBurstDetector`: 실효 쿨 90초 이상 스킬 3개 이상이 3초 안에 몰리면 극딜 시작으로 본다. 길이는 그 스킬들 "N초 동안"의 중앙값이다(버프 지속 증가 미반영). 칼리 2명에서 120초 주기 3회씩 찾았고 길이는 40~50초였다.
+  - `burst`: `BurstDetector` / `CooldownClusterBurstDetector`: 실효 쿨 90초 이상 스킬 3개 이상이 3초 안에 몰리면 극딜 시작으로 본다. 길이는 그 스킬들 지속시간의 중앙값(몰린 스킬 절반 이상이 켜져 있는 동안)이다.
+    - **버프 지속시간 반영(A3, 2026-09-29)**: `SkillSpec.effectiveDurationMs` = 지속 × (1 + 버프 지속시간%). 버프에만 적용하고 소환·영역·설치물·공격 지속에는 적용하지 않는다(**사용자 확인. 데이터로는 검증하지 못했다**). `SkillText.isBuffDurationExtendable`: 첫 "N초 동안" 절에 소환|영역|설치|생성|구현|키다운|행동 불가|N번 공격|공격 상태가 있거나, "버프 지속시간 증가 … 효과를 받지 않" 예외 문구가 있으면 제외한다.
+      - 검증을 시도했지만 실패했다: 레디 투 다이는 지속 중 다시 누른 기록이 없었다(간격 52~59초 = 쿨). 오블리비온의 헥스 쿨 50% 감소가 끝나는 시점은 미적용·적중 쿨 감소 노이즈 때문에 판정할 수 없었다.
+      - 지속시간이 쿨보다 긴 스킬(상시 버프)은 극딜 길이에서 뺀다. 쓸만한 샤프 아이즈(쿨 180초, 지속 270초)가 섞여 아크메이지(썬,콜) 극딜이 264초가 됐었다. 그 표본은 버프 지속 155%라 60초 버프도 153초가 되어 빠지고, 링·프로스트 아크·스피릿 오브 스노우로 20초가 됐다.
+      - 결과(극딜 길이): 칼리 40초 안팎 → 54~72초, 보우마스터 40 → 68초, 히어로 30~50 → 51~53초, 나이트로드 30 → 47초. 5개 직업 기록의 진단 영향도는 그대로였고, "아낀 것 vs 놀린 것" 상관(5장)도 같았다.
+      - 다시 누른 입력을 합치는 범위는 지속시간과 실효 쿨 중 짧은 쪽이다. 레디 투 다이는 30초 × 1.79 = 54초로 쿨(약 52초)보다 길어져, 그대로 두면 새 시전까지 합쳐진다.
   - `rule`: `MissedCastRule`(단일), `CastCountGapRule`·`LoadoutRule`(비교. 기준 기록이 없으면 아무것도 내지 않는다), `CooldownEligibility`(쿨 10초 이상이면서 쿨 변동 스킬이 아닌지 판정. 규칙들이 공유한다)
   - `sequence`: `BurstOrderExtractor`(첫 극딜 구간 −5초~+15초, 쿨 10초 이상 스킬의 첫 시전 순서, `baseName`), `SequenceAligner` / `NeedlemanWunschAligner`(일치 +2, 간격 −1, 불일치 −3이라 다른 스킬끼리는 짝짓지 않는다)
   - `AnalysisContext`는 `CharacterSpec`과 `reference`(비교 기준 기록, 단일이면 null)를 담는다. `FindingType`마다 `FindingCategory`(운용 / 구성·스펙)가 있다. 엔진은 같은 스킬, 같은 분류의 결과 중 영향도가 가장 큰 것만 남긴다(놓친 시전과 시전 수 부족을 두 번 세지 않게 하려고).
@@ -219,6 +224,8 @@ com.battlecoach
   - `KoreanJosa`: 스킬 이름 뒤 와/과, 를/을을 받침에 맞춘다(한글이 아닌 글자로 끝나면 받침 없음).
   - 타임라인: `IdleTimelineAssembler`(대상은 놓친 시전과 같다, 1초 미만 구간은 그리지 않음) → `attachIdleOverlay`(custom 시리즈 막대. 그 외 산호 / 극딜 대기 금색 / 전투 종료 전 회색). 기본은 진단·참고에 나온 스킬만 그리고, "쿨 15초 이상 스킬 모두 보기"로 전체를 그린다. 진단 카드의 "타임라인에서 보기"는 그 줄을 강조하고 가장 긴 쉰 구간 ±20초로 확대한다.
     - 확대 경계에 걸친 막대가 사라지지 않게 dataZoom `filterMode: 'weakFilter'`. 시전 시리즈에 `id: 'casts'`를 둬서, 나중에 합치는 시리즈가 순서대로 병합되며 덮어쓰지 않게 한다.
+- **놓친 시전의 극딜 안팎(A1)**: `IdleBreakdown.placement` → `MissedPlacement(inBurst, outOfBurst, unplaced)`. 공백마다 쿨이 돈 시각부터 쿨 간격으로 가상 시전을 놓아 극딜 구간 안인지 본다. 공백 여러 개를 합쳐 1회가 된 몫은 위치 미정이다. `result`가 스킬별 합계만 줘서 극딜 안팎 1회 데미지를 나눌 수 없으므로 **숫자 범위 대신 방향만** 메시지에 붙인다(극딜 밖 몫은 평균보다 작고 안 몫은 크다). 극딜 대기로 놓친 시전은 대부분 극딜 밖에 놓인다.
+- **미적용 확률을 기대 시전 수에 넣지 않는다(A2, 2026-09-29 검증)**: 칼리 미적용은 25~27%인데, 랭커 11명의 쿨 20초 이상 스킬 간격 486개 중 쿨 절반 미만으로 다시 쓴 것은 2.7%(13개)였다. 다른 직업(미적용 0~7%)도 0~6%였다(나이트로드 18.9%는 쿨 변동 스킬 영향). 기대 시전을 1/(1−p)배로 잡으면 랭커 전원이 약 27%를 놓친 것이 되어 쿨 11~12초 때와 같은 구조적 오탐이 된다. 같은 직업끼리 비교하는 규칙은 p가 비슷해 상쇄된다.
 - `SequenceSegment`(domain): `sequence_key`가 같은 시전을 기록 순서대로 묶어 실행 구간을 만든다. 사이에 끼어든 일반 시전은 무시하고, 같은 키의 직전 시전과 10초(`MAX_GAP_MS`)보다 멀면 새 실행으로 본다. 실측으로 확인한 실행 안의 간격은 1.1초 이하, 실행 사이 간격은 52.8초 이상이다. `Replay.getSequenceSegments()` → `ReplayDetail.sequenceSegments`.
 
 - 테스트: `SingleFlightTest`(CountDownLatch로 동시성 검증), `SkillNameTest`, `NexonDatesTest`, `SequenceSegmentTest`, `KoreanNumberFormatTest`, `SkillTextTest`, `StandardCooldownCalculatorTest`, `NexonCharacterSpecParserTest`(샘플 `src/test/resources/nexon/character-info-kali.json`: 칼리 A 원문에서 basic, final_stat, character_skill만 남김)

@@ -16,7 +16,8 @@ import java.util.Optional;
  *       (칼리 A의 120초 버프는 전투 종료 6초 전에 쿨이 돌았지만 지속시간 30~60초라 세지 않는다)</li>
  * </ul>
  *
- * @param spans 쉰 구간 전부(시간순). 합계 필드는 이 구간들을 종류별로 더한 값이다
+ * @param spans     쉰 구간 전부(시간순). 합계 필드는 이 구간들을 종류별로 더한 값이다
+ * @param placement 놓친 시전이 극딜 안팎 어디에 떨어졌을지
  */
 public record IdleBreakdown(
         long cooldownMs,
@@ -24,7 +25,8 @@ public record IdleBreakdown(
         long unusedMs,
         long tailMs,
         long minUsefulTailMs,
-        List<IdleSpan> spans
+        List<IdleSpan> spans,
+        MissedPlacement placement
 ) {
 
     /** 전투 끝에 이만큼도 남지 않았으면 써도 의미가 없다고 본다. 지속시간이 있으면 그 값을 쓴다. */
@@ -54,8 +56,32 @@ public record IdleBreakdown(
             spans.add(new IdleSpan(readyAt, context.playTimeMs(), IdleSpan.Kind.TAIL));
         }
         long minUseful = Math.max(MIN_TAIL_MS, skill.durationMs() == null ? 0 : skill.durationMs());
-        return new IdleBreakdown(cooldown, sum(spans, IdleSpan.Kind.HELD_FOR_BURST), sum(spans, IdleSpan.Kind.UNUSED),
-                sum(spans, IdleSpan.Kind.TAIL), minUseful, spans);
+        IdleBreakdown draft = new IdleBreakdown(cooldown, sum(spans, IdleSpan.Kind.HELD_FOR_BURST),
+                sum(spans, IdleSpan.Kind.UNUSED), sum(spans, IdleSpan.Kind.TAIL), minUseful, spans, MissedPlacement.none());
+        return new IdleBreakdown(draft.cooldownMs, draft.heldForBurstMs, draft.unusedMs, draft.tailMs, minUseful, spans,
+                draft.place(context));
+    }
+
+    /**
+     * 공백마다 쿨이 돈 시각부터 쿨 간격으로 가상의 시전을 놓는다. 중간 공백은 다음 실제 시전을 늦추지 않는 만큼(공백 ÷ 쿨 내림),
+     * 전투 종료 전 공백은 {@link #missedCasts()} 와 같은 규칙으로 센다.
+     */
+    private MissedPlacement place(AnalysisContext context) {
+        int in = 0;
+        int out = 0;
+        for (IdleSpan span : spans) {
+            long count = span.kind() == IdleSpan.Kind.TAIL
+                    ? (isTailUseful() ? (span.durationMs() - minUsefulTailMs) / cooldownMs + 1 : 0)
+                    : span.durationMs() / cooldownMs;
+            for (long k = 0; k < count; k++) {
+                if (context.burstAt(span.startMs() + k * cooldownMs).isPresent()) {
+                    in++;
+                } else {
+                    out++;
+                }
+            }
+        }
+        return new MissedPlacement(in, out, Math.max(0, missedCasts() - in - out));
     }
 
     private static long sum(List<IdleSpan> spans, IdleSpan.Kind kind) {

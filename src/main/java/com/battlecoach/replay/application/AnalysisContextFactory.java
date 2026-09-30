@@ -38,13 +38,15 @@ public class AnalysisContextFactory {
                 .map(entry -> {
                     List<CastView> casts = entry.getValue();
                     SkillSpec skillSpec = spec.find(entry.getKey()).orElse(null);
+                    Long cooldown = effectiveCooldown(skillSpec, spec);
+                    Long duration = skillSpec == null ? null : skillSpec.effectiveDurationMs(spec.cooldownStats());
                     return new SkillUsage(
                             entry.getKey(),
                             casts.get(0).skillName(),
-                            castTimes(casts, skillSpec),
+                            castTimes(casts, skillSpec, duration, cooldown),
                             damageByBaseName.get(entry.getKey()),
-                            effectiveCooldown(skillSpec, spec),
-                            skillSpec == null ? null : skillSpec.durationMs());
+                            cooldown,
+                            duration);
                 })
                 .toList();
 
@@ -56,13 +58,18 @@ public class AnalysisContextFactory {
                 burstDetector.detect(skills));
     }
 
-    /** 지속 중 다시 눌러 효과를 바꾸는 스킬은 다시 누른 입력을 시전으로 세지 않는다. */
-    private static List<Long> castTimes(List<CastView> casts, SkillSpec skillSpec) {
+    /**
+     * 지속 중 다시 눌러 효과를 바꾸는 스킬은 다시 누른 입력을 시전으로 세지 않는다.
+     * 합치는 범위는 지속시간과 실효 쿨 중 짧은 쪽이다. 버프 지속시간 증가로 지속이 쿨보다 길어지면(레디 투 다이 30초 × 1.79 = 54초,
+     * 쿨 약 52초) 쿨이 돌아 새로 쓴 시전까지 합쳐 버리기 때문이다.
+     */
+    static List<Long> castTimes(List<CastView> casts, SkillSpec skillSpec, Long durationMs, Long cooldownMs) {
         List<Long> times = casts.stream().map(CastView::elapseMs).toList();
-        if (skillSpec == null || !skillSpec.reactivatable() || skillSpec.durationMs() == null) {
+        if (skillSpec == null || !skillSpec.reactivatable() || durationMs == null) {
             return times;
         }
-        return SkillUsage.mergeReactivations(times, skillSpec.durationMs());
+        long window = cooldownMs == null ? durationMs : Math.min(durationMs, cooldownMs - SkillUsage.EARLY_TOLERANCE_MS);
+        return SkillUsage.mergeReactivations(times, window);
     }
 
     private Long effectiveCooldown(SkillSpec skillSpec, CharacterSpec spec) {

@@ -12,6 +12,7 @@ import com.battlecoach.diagnosis.domain.DiagnosisRule;
 import com.battlecoach.diagnosis.domain.Finding;
 import com.battlecoach.diagnosis.domain.FindingType;
 import com.battlecoach.diagnosis.domain.IdleBreakdown;
+import com.battlecoach.diagnosis.domain.MissedPlacement;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 
 /**
@@ -49,7 +50,8 @@ public class MissedCastRule implements DiagnosisRule {
         String message = String.format(Locale.ROOT,
                 "실효 쿨 %.1f초인데 쿨이 돈 뒤 쓰지 않은 시간이 %.1f초라 약 %d회를 놓쳤습니다. (극딜 대기 %.1f초, 그 외 %.1f초, 전투 종료 전 %.1f초)",
                 seconds(idle.cooldownMs()), seconds(idle.totalMs()), missed,
-                seconds(idle.heldForBurstMs()), seconds(idle.unusedMs()), seconds(idle.tailMs()));
+                seconds(idle.heldForBurstMs()), seconds(idle.unusedMs()), seconds(idle.tailMs()))
+                + placementSentence(idle.placement(), context);
         String advice = MissedCastAdvisor.advise(idle, context).orElse(null);
         if (skill.damage() == null || skill.damage() <= 0) {
             return Optional.of(Finding.unmeasured(FindingType.MISSED_CAST, skill,
@@ -58,6 +60,30 @@ public class MissedCastRule implements DiagnosisRule {
         double lostDamage = (double) skill.damage() / skill.castCount() * missed;
         return Optional.of(Finding.measured(FindingType.MISSED_CAST, skill, context.toSeconds(lostDamage), message)
                 .withAdvice(advice));
+    }
+
+    /**
+     * 극딜 안팎 위치와 영향도 오차의 방향. result 는 스킬별 합계만 줘서 극딜 안팎 1회 데미지를 나눌 수 없으므로
+     * 숫자 범위 대신 방향만 알린다.
+     */
+    static String placementSentence(MissedPlacement placement, AnalysisContext context) {
+        if (context.bursts().isEmpty() || placement.inBurst() + placement.outOfBurst() == 0) {
+            return "";
+        }
+        StringBuilder sentence = new StringBuilder(String.format(Locale.ROOT,
+                " 쿨이 돈 시각부터 썼다면 극딜 안 %d회, 밖 %d회", placement.inBurst(), placement.outOfBurst()));
+        if (placement.unplaced() > 0) {
+            sentence.append(String.format(Locale.ROOT, "(여러 공백을 합친 %d회는 위치 미정)", placement.unplaced()));
+        }
+        sentence.append("입니다.");
+        if (placement.outOfBurst() > 0 && placement.inBurst() == 0) {
+            sentence.append(" 영향도는 평균 1회 데미지로 계산해서 실제 손해는 이보다 작을 수 있습니다.");
+        } else if (placement.inBurst() > 0 && placement.outOfBurst() == 0) {
+            sentence.append(" 영향도는 평균 1회 데미지로 계산해서 실제 손해는 이보다 클 수 있습니다.");
+        } else {
+            sentence.append(" 영향도는 평균 1회 데미지로 계산해서, 극딜 밖 몫은 실제보다 크게, 극딜 안 몫은 작게 잡혔을 수 있습니다.");
+        }
+        return sentence.toString();
     }
 
     private static double seconds(long ms) {

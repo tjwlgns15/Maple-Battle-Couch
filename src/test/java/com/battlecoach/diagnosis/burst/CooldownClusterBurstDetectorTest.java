@@ -48,6 +48,18 @@ class CooldownClusterBurstDetectorTest {
     }
 
     @Test
+    void 지속시간이_쿨보다_긴_상시_버프는_구간_길이에서_뺀다() {
+        // 쓸만한 샤프 아이즈(쿨 180초, 지속 270초 × 버프 지속 증가)가 극딜 때 함께 나가도 극딜 길이를 늘리지 않는다
+        List<BurstWindow> windows = detector.detect(List.of(
+                skill("그란디스", 120_000L, 40_000L, 1_000),
+                skill("오블리비온", 120_000L, 30_000L, 1_500),
+                skill("쓸만한 샤프 아이즈", 180_000L, 480_000L, 2_000),
+                skill("쓸만한 하이퍼 바디", 180_000L, 480_000L, 2_500)));
+
+        assertThat(windows).containsExactly(new BurstWindow(1_000, 41_000));
+    }
+
+    @Test
     void 겹치는_구간은_합친다() {
         List<BurstWindow> windows = detector.detect(List.of(
                 skill("A", 120_000L, 30_000L, 0, 10_000),

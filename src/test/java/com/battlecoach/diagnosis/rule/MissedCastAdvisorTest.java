@@ -11,6 +11,7 @@ import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.BurstWindow;
 import com.battlecoach.diagnosis.domain.IdleBreakdown;
 import com.battlecoach.diagnosis.domain.IdleSpan;
+import com.battlecoach.diagnosis.domain.MissedPlacement;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 import com.battlecoach.spec.domain.CharacterSpec;
 import com.battlecoach.spec.domain.CooldownStats;
@@ -32,6 +33,28 @@ class MissedCastAdvisorTest {
                 new IdleSpan(90_000, 100_000, IdleSpan.Kind.TAIL));
         assertThat(idle.unusedMs()).isEqualTo(30_000);
         assertThat(idle.tailMs()).isEqualTo(10_000);
+    }
+
+    @Test
+    void 놓친_시전을_쿨이_돈_시각부터_놓아_극딜_안팎으로_나눈다() {
+        // 쿨 20초: 20~60초 공백(60초 사용, 극딜 55~85초 안이라 극딜 대기) → 가상 시전 20·40초(둘 다 극딜 밖)
+        // 80초 사용 후 100초에 쿨이 돌지만 전투는 100초에 끝난다
+        SkillUsage held = skill(20_000, 0, 60_000, 80_000);
+        AnalysisContext context = context(List.of(new BurstWindow(55_000, 85_000)), held);
+
+        assertThat(IdleBreakdown.of(held, context).placement()).isEqualTo(new MissedPlacement(0, 2, 0));
+        assertThat(MissedCastRule.placementSentence(new MissedPlacement(0, 2, 0), context))
+                .contains("극딜 안 0회, 밖 2회").contains("실제 손해는 이보다 작을 수 있습니다");
+        assertThat(MissedCastRule.placementSentence(new MissedPlacement(1, 1, 1), context))
+                .contains("여러 공백을 합친 1회는 위치 미정").contains("극딜 밖 몫은 실제보다 크게");
+    }
+
+    @Test
+    void 극딜이_없으면_위치_문장을_붙이지_않는다() {
+        SkillUsage skill = skill(20_000, 0, 50_000);
+        AnalysisContext context = context(List.of(), skill);
+
+        assertThat(MissedCastRule.placementSentence(IdleBreakdown.of(skill, context).placement(), context)).isEmpty();
     }
 
     @Test
