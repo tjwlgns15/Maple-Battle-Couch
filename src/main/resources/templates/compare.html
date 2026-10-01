@@ -32,6 +32,39 @@
         </div>
     </section>
 
+    <section class="panel">
+        <h2 data-label="Cooldown Stats">쿨타임 감소 · 버프 지속시간</h2>
+        <p class="muted small">
+            입장 시점의 합계입니다. 다른 값은 <b class="gold">금색</b>으로 표시했습니다.
+            쿨타임 감소가 다르면 같은 스킬도 실효 쿨이 달라 시전 수 차이가 날 수 있고, 버프 지속시간이 다르면 극딜 길이가 달라집니다.
+        </p>
+        <div class="table-scroll">
+            <table class="table compact spec-stat-table">
+                <thead>
+                <tr>
+                    <th>항목</th>
+                    <th class="right">내 기록</th>
+                    <th class="right">기준 기록</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="mine, it : ${c.baseCooldown().items()}"
+                    th:with="ref=${c.targetCooldown().items()[it.index]}, diff=${mine.differsFrom(ref)}">
+                    <td th:text="${mine.name()}">쿨타임 감소</td>
+                    <td class="right" th:each="item : ${ {mine, ref} }">
+                        <strong th:classappend="${diff} ? 'gold'"
+                                th:text="|${item.sign()}${@koreanNumberFormat.plain(item.total())}${item.unit()}|">-5초</strong>
+                        <span class="source" th:unless="${#lists.isEmpty(item.displaySources())}">
+                            <th:block th:each="src, s : ${item.displaySources()}"
+                                      th:text="|${src.label()} ${@koreanNumberFormat.plain(src.value())}${item.unit()}${s.last ? '' : ' · '}|">모자 잠재능력 3초</th:block>
+                        </span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <section class="panel diagnosis" th:with="d=${c.diagnosis()}">
         <h2 data-label="Diagnosis">진단</h2>
         <p class="muted small">
@@ -171,12 +204,17 @@
         <div id="cast-gap-chart" class="chart"></div>
 
         <h3 class="chart-title">딜 비중 차이의 원인</h3>
-        <p class="muted small">
-            스킬별 초 환산(평균 DPS 기준 몇 초 치 데미지) 차이를 두 원인으로 나눴습니다.
-            <b class="legend-cast">시전 수 효과</b>는 더·덜 쓴 만큼, <b class="legend-eff">1회 효율 효과</b>는 한 번 쓸 때의 딜 비중 차이입니다
-            (스킬 레벨, 다른 스킬 레벨, 버프 겹침이 함께 반영됨). <b class="legend-passive">회색</b>은 한쪽에 시전 기록이 없는 스킬(패시브·연동 스킬이나 한쪽만 쓴 스킬)이라 나눌 수 없습니다.
-            초 환산의 합은 전투 시간과 같아서 한 스킬이 오르면 다른 스킬이 내려가므로, 차이 자체를 손해로 읽으면 안 됩니다.
-        </p>
+        <ul class="muted small explain-list">
+            <li><b>막대 길이</b>: 이 스킬이 내 딜에서 차지한 몫이 기준 기록보다 몇 초어치 큰지(오른쪽)·작은지(왼쪽)입니다.
+                몫은 "스킬 데미지 ÷ 평균 DPS"로 셉니다. 판데모니움이 20초면 평균 딜로 20초 동안 칠 만큼을 이 스킬이 넣었다는 뜻입니다.</li>
+            <li><b>막대 색</b>: 그 차이가 왜 났는지입니다.
+                <b class="legend-cast">시전 수 효과</b>는 더·덜 써서 생긴 몫,
+                <b class="legend-eff">1회 효율 효과</b>는 한 번 쓸 때 몫이 커서·작아서 생긴 몫입니다. 두 색을 더하면 막대 길이가 됩니다.
+                <b class="legend-passive">회색</b>은 패시브·연동 스킬처럼 한쪽에 시전 기록이 없어 나눌 수 없는 스킬입니다.</li>
+            <li><b>주의</b>: 몫을 모두 더하면 전투 시간과 같아서, 한 스킬이 늘면 다른 스킬은 줄어듭니다. 차이를 그대로 손해로 읽지 마세요.
+                1회 효율에는 스킬 레벨, 다른 스킬 레벨, 극딜 버프 겹침이 섞여 있어 운용 실력만의 차이가 아닙니다.
+                실제 손해는 위 진단 카드에서 따로 계산합니다.</li>
+        </ul>
         <div id="share-gap-chart" class="chart"></div>
 
         <details class="notes">

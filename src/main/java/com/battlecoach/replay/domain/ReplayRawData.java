@@ -49,4 +49,9 @@ public class ReplayRawData {
     public static ReplayRawData of(String replayId, String resultJson, String timelineJson, String characterInfoJson) {
         return new ReplayRawData(replayId, resultJson, timelineJson, characterInfoJson);
     }
+
+    /** 갱신 때 다시 받은 character-info 원문으로 바꾼다. */
+    public void replaceCharacterInfo(String latestCharacterInfoJson) {
+        this.characterInfoJson = latestCharacterInfoJson;
+    }
 }

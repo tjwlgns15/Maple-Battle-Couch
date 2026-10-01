@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('연무장 기록 모음')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main class="container" th:with="b=${board}">
+    <p class="eyebrow">Record Board</p>
+    <h1>연무장 기록 모음</h1>
+    <p class="muted small">
+        이 사이트에서 검색한 기록입니다. 기록 상세의 "비교 대상 대비"는 여기 있는 같은 직업·기간 기록 중에서
+        비교 대상을 고릅니다. 검색이 늘수록 비교 대상도 늘어납니다.
+    </p>
+
+    <p th:if="${b.periodNo() == null}" class="empty">아직 저장된 기록이 없습니다. 캐릭터를 검색하면 기록이 쌓입니다.</p>
+
+    <th:block th:if="${b.periodNo() != null}">
+        <nav class="filter-row" aria-label="기간">
+            <span class="filter-label">기간</span>
+            <a th:each="p : ${b.periods()}" class="pill"
+               th:classappend="${p.periodNo() == b.periodNo()} ? 'active'"
+               th:href="@{/records(period=${p.periodNo()})}"
+               th:attr="aria-current=${p.periodNo() == b.periodNo()} ? 'page' : null">
+                <span th:text="${p.periodNo()} + '기'">5기</span>
+                <small th:text="${p.count()}">12</small>
+            </a>
+        </nav>
+        <nav class="filter-row" aria-label="직업">
+            <span class="filter-label">직업</span>
+            <a th:each="c : ${b.classes()}" class="pill"
+               th:classappend="${c.characterClass() == b.characterClass()} ? 'active'"
+               th:href="@{/records(period=${b.periodNo()}, job=${c.characterClass()}, sort=${b.sort()})}"
+               th:attr="aria-current=${c.characterClass() == b.characterClass()} ? 'page' : null">
+                <span th:text="${c.characterClass()}">칼리</span>
+                <small th:text="${c.count()}">12</small>
+            </a>
+        </nav>
+
+        <section class="panel">
+            <h2 data-label="Records" th:text="|${b.periodNo()}기 ${b.characterClass()} 기록 ${#lists.size(b.rows())}개|">5기 칼리 기록</h2>
+            <div class="tabs" role="tablist" aria-label="정렬">
+                <a class="tab" role="tab" th:classappend="${b.sort() == 'dps'} ? 'active'"
+                   th:attr="aria-selected=${b.sort() == 'dps'}"
+                   th:href="@{/records(period=${b.periodNo()}, job=${b.characterClass()}, sort='dps')}">DPS 순</a>
+                <a class="tab" role="tab" th:classappend="${b.sort() == 'efficiency'} ? 'active'"
+                   th:attr="aria-selected=${b.sort() == 'efficiency'}"
+                   th:href="@{/records(period=${b.periodNo()}, job=${b.characterClass()}, sort='efficiency')}">전투력 대비 DPS 순</a>
+            </div>
+            <p class="muted small">
+                전투력 대비 DPS는 이 목록 기록들의 전투력(8개 이상이면 헥사 코어 레벨 합도)으로 예상한 DPS보다
+                실제 DPS가 몇 % 높은지입니다. 스펙에 비해 잘 친 기록이 위로 옵니다.
+                <span th:unless="${b.efficiencyReady()}" class="negative">전투력이 있는 기록이 5개 이상이어야 계산할 수 있어 지금은 비어 있습니다.</span>
+            </p>
+            <div class="table-scroll">
+                <table class="table compact">
+                    <thead>
+                    <tr>
+                        <th class="right">순위</th>
+                        <th>캐릭터</th>
+                        <th class="right">레벨</th>
+                        <th class="right">DPS</th>
+                        <th class="right">전투력</th>
+                        <th class="right">전투력 대비</th>
+                        <th>등록일</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${b.rows()}">
+                        <td class="right" th:text="${row.rank()}">1</td>
+                        <td><a th:href="@{/replays/{id}(id=${row.replayId()})}" th:text="${row.characterName()}">캐릭터</a></td>
+                        <td class="right" th:text="${row.characterLevel()}">288</td>
+                        <td class="right strong" th:text="${@koreanNumberFormat.format(row.totalDps())}"
+                            th:title="${#numbers.formatInteger(row.totalDps(), 1, 'COMMA')}">1조</td>
+                        <td class="right"
+                            th:text="${row.combatPower() == null} ? '-' : |${#numbers.formatDecimal(row.combatPower() / 1.0E8, 1, 2)}억|">3.01억</td>
+                        <td class="right" th:if="${row.efficiency() == null}">-</td>
+                        <td class="right" th:unless="${row.efficiency() == null}"
+                            th:classappend="${row.efficiency() < 0} ? 'negative' : 'positive'"
+                            th:text="|${row.efficiency() >= 0 ? '+' : ''}${#numbers.formatDecimal(row.efficiency() * 100, 1, 1)}%|">+3.2%</td>
+                        <td th:text="${#temporals.format(row.registerDate(), 'yyyy-MM-dd')}">2026-10-01</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </th:block>
+</main>
+</body>
+</html>

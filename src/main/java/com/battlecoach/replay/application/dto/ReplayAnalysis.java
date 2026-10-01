@@ -9,7 +9,7 @@ public record ReplayAnalysis(
         DiagnosisResult diagnosis,
         List<BurstWindow> bursts,
         CooldownReport cooldowns,
-        RankerStanding rankerStanding,
+        ComparisonStanding comparisonStanding,
         List<SkillIdleView> idleSpans
 ) {
 }

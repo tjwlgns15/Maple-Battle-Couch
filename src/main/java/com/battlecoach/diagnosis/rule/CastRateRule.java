@@ -17,8 +17,8 @@ import com.battlecoach.diagnosis.statistics.JobStatisticsCalculator;
 import com.battlecoach.diagnosis.statistics.SkillDistribution;
 
 /**
- * 통계 진단: 분당 시전 수가 랭커 하위 25%보다 낮은 스킬.
- * 영향도는 "랭커 중앙값까지 모자란 시전 수 × 내 1회 초 환산"이다(내 DPS 기준).
+ * 통계 진단: 분당 시전 수가 비교 대상 하위 25%보다 낮은 스킬.
+ * 영향도는 "비교 대상 중앙값까지 모자란 시전 수 × 내 1회 초 환산"이다(내 DPS 기준).
  * 대상 스킬 기준은 {@link CooldownEligibility} 를 따른다.
  */
 @Component
@@ -48,23 +48,23 @@ public class CastRateRule implements DiagnosisRule {
                 continue;
             }
             String message = String.format(Locale.ROOT,
-                    "이 스킬을 쓴 랭커 %d명의 분당 시전 수는 중앙값 %.2f회(하위 25%% %.2f회)인데 이 기록은 %.2f회입니다. 중앙값보다 약 %d회 적게 썼습니다.",
+                    "이 스킬을 쓴 비교 대상 %d명의 분당 시전 수는 중앙값 %.2f회(하위 25%% %.2f회)인데 이 기록은 %.2f회입니다. 중앙값보다 약 %d회 적게 썼습니다.",
                     distribution.get().userCount(), p50, p25, myRate, missing);
             String advice = MissedCastAdvisor.adviseShortfall(skill, context,
-                    separatedPartner(skill, context, statistics.get()), "랭커 대부분").orElse(null);
+                    separatedPartner(skill, context, statistics.get()), "비교 대상 대부분").orElse(null);
             if (skill.damage() == null || skill.damage() <= 0) {
-                findings.add(Finding.unmeasured(FindingType.CAST_RATE_BELOW_RANKERS, skill,
+                findings.add(Finding.unmeasured(FindingType.CAST_RATE_BELOW_PEERS, skill,
                         message + " 데미지가 없는 스킬(버프 등)이라 영향도는 계산하지 않았습니다.").withAdvice(advice));
                 continue;
             }
             double lostDamage = (double) skill.damage() / skill.castCount() * missing;
-            findings.add(Finding.measured(FindingType.CAST_RATE_BELOW_RANKERS, skill, context.toSeconds(lostDamage), message)
+            findings.add(Finding.measured(FindingType.CAST_RATE_BELOW_PEERS, skill, context.toSeconds(lostDamage), message)
                     .withAdvice(advice));
         }
         return findings;
     }
 
-    /** 랭커 대부분이 함께 쓰는 짝을 이 기록은 절반 넘게 따로 썼으면 그 짝의 이름 */
+    /** 비교 대상 대부분이 함께 쓰는 짝을 이 기록은 절반 넘게 따로 썼으면 그 짝의 이름 */
     private static String separatedPartner(SkillUsage skill, AnalysisContext context, JobStatistics statistics) {
         return statistics.bestPairFor(skill.baseName())
                 .flatMap(pair -> context.find(pair.partnerBaseName()))

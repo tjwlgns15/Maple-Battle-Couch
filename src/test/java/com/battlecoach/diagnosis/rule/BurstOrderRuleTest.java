@@ -27,7 +27,7 @@ class BurstOrderRuleTest {
     private final BurstOrderRule rule = new BurstOrderRule(new BurstOrderExtractor());
 
     @Test
-    void 랭커_대부분과_반대_순서로_쓰면_합의율이_가장_높은_쌍_하나만_참고로_낸다() {
+    void 비교_대상_대부분과_반대_순서로_쓰면_합의율이_가장_높은_쌍_하나만_참고로_낸다() {
         // 칼리 B처럼 극딜마다 보이드 버스트(2초) 뒤에 스틱스(6초)를 쓴다
         AnalysisContext context = context(
                 skill("보이드 버스트", 2_000, 112_000),
@@ -43,7 +43,7 @@ class BurstOrderRuleTest {
             assertThat(finding.type()).isEqualTo(FindingType.BURST_ORDER_REVERSED);
             assertThat(finding.skillBaseName()).isEqualTo("스틱스");
             assertThat(finding.isMeasured()).isFalse();
-            assertThat(finding.message()).contains("랭커 극딜 29회 중 100%").contains("2번 중 2번 보이드 버스트 뒤");
+            assertThat(finding.message()).contains("비교 대상 극딜 29회 중 100%").contains("2번 중 2번 보이드 버스트 뒤");
         });
     }
 

@@ -10,7 +10,7 @@ import com.battlecoach.diagnosis.domain.IdleSpan;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 
 /**
- * 쉰 시간의 가장 큰 원인에 맞춰 처방 문장을 고른다. 놓친 시전과 "랭커보다 적은 시전" 규칙이 함께 쓴다.
+ * 쉰 시간의 가장 큰 원인에 맞춰 처방 문장을 고른다. 놓친 시전과 "비교 대상보다 적은 시전" 규칙이 함께 쓴다.
  * <ul>
  *   <li>그 외: 쿨이 돌면 바로 쓰라고 하고, 가장 길게 쉰 구간을 알려 준다.</li>
  *   <li>극딜 대기: 대기 구간이 쿨보다 길어 극딜 전에 한 번 더 쓰고도 극딜에 쿨이 돌아오면 그 시각을 알려 준다.</li>
@@ -23,11 +23,11 @@ final class MissedCastAdvisor {
     }
 
     /**
-     * 시전 수가 기준(기준 기록, 랭커)보다 적을 때. 기준이 함께 쓰는 스킬을 따로 썼으면 시퀀스에 넣으라고 하고,
+     * 시전 수가 기준(기준 기록, 비교 대상)보다 적을 때. 기준이 함께 쓰는 스킬을 따로 썼으면 시퀀스에 넣으라고 하고,
      * 아니면 쉰 시간의 원인으로 처방한다.
      *
      * @param separatedPartner 기준은 함께 쓰는데 이 기록은 따로 쓴 스킬 이름. 없으면 null
-     * @param referenceLabel   기준을 부르는 말("기준 기록", "랭커 대부분")
+     * @param referenceLabel   기준을 부르는 말("기준 기록", "비교 대상 대부분")
      */
     static Optional<String> adviseShortfall(SkillUsage skill, AnalysisContext context, String separatedPartner,
                                             String referenceLabel) {

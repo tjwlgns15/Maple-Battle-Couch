@@ -1,11 +1,8 @@
 package com.battlecoach.nexon;
 
 import com.battlecoach.nexon.dto.BattlePracticeResultResponse;
-import java.time.LocalDate;
-
 import com.battlecoach.nexon.dto.CharacterBasicResponse;
 import com.battlecoach.nexon.dto.CharacterInfoBasicResponse;
-import com.battlecoach.nexon.dto.OverallRankingResponse;
 import com.battlecoach.nexon.dto.RawResponse;
 import com.battlecoach.nexon.dto.ReplayIdListResponse;
 import com.battlecoach.nexon.dto.SkillTimelineResponse;
@@ -32,11 +29,4 @@ public interface NexonApiClient {
 
     /** GET /maplestory/v1/battle-practice/character-info?replay_id= */
     RawResponse<CharacterInfoBasicResponse> findCharacterInfo(String replayId);
-
-    /**
-     * GET /maplestory/v1/ranking/overall?date=&class=&page=
-     *
-     * @param jobClass "직업군-전직" 형식. 예: "마법사-비숍", 전직이 없는 직업은 "칼리-전체전직"
-     */
-    OverallRankingResponse findOverallRanking(LocalDate date, String jobClass, int page);
 }

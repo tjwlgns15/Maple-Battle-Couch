@@ -16,7 +16,7 @@ public final class CooldownEligibility {
      * 내 기록만 보는 절대 기준(놓친 시전)에 쓰는 최소 쿨. 쿨 11~12초 스킬은 랭커 전원이 시전 대비 40~75%를 "놓쳤다"
      * (포 시즌 VI, 써든레이드 VI, 블리츠 실드 VI). 짧은 쿨 스킬끼리의 경쟁이라 개인 실수가 아니다.
      * 쿨 23초 이상인 판데모니움은 칼리 랭커 11명 모두 0~2회였다.
-     * 랭커·기준 기록과 비교하는 규칙은 같은 손실이 기준 쪽에도 있어 상쇄되므로 {@link #MIN_COOLDOWN_MS}를 쓴다.
+     * 비교 대상·기준 기록과 비교하는 규칙은 같은 손실이 기준 쪽에도 있어 상쇄되므로 {@link #MIN_COOLDOWN_MS}를 쓴다.
      */
     public static final long MIN_ABSOLUTE_COOLDOWN_MS = 15_000;
 

@@ -72,7 +72,7 @@ class ReplayLoader {
         return pages;
     }
 
-    private static CharacterProfile toProfile(CharacterInfoBasicResponse characterInfo) {
+    static CharacterProfile toProfile(CharacterInfoBasicResponse characterInfo) {
         CharacterInfoBasicResponse.Basic basic = characterInfo.basicObject();
         if (basic == null) {
             throw new IllegalStateException("character-info 응답에 basic_object 가 없습니다.");

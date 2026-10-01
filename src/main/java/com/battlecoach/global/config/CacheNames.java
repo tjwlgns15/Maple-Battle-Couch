@@ -14,8 +14,11 @@ public final class CacheNames {
     /** 리플레이 → 스킬 스펙. 리플레이 원문에서 파싱하므로 바뀌지 않아 크기로만 제한한다. */
     public static final String CHARACTER_SPEC = "characterSpec";
 
-    /** 직업·기간(·제외 리플레이) → 랭커 통계. 수집 중 표본이 늘어나므로 짧은 TTL 을 둔다. */
+    /** 직업·기간·제외 리플레이·비교 조건 → 비교 대상 통계. 검색할 때마다 풀이 늘어나므로 짧은 TTL 을 둔다. */
     public static final String JOB_STATISTICS = "jobStatistics";
+
+    /** 직업·기간 → 저장된 기록 전체의 분석 컨텍스트(비교 풀). 통계와 같은 TTL 을 둔다. */
+    public static final String COMPARISON_POOL = "comparisonPool";
 
     private CacheNames() {
     }

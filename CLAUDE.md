@@ -14,11 +14,11 @@
 1. **닉네임 검색**: 해당 캐릭터의 연무장 기록 목록(기간별)을 조회한다.
 2. **기록 상세**: 결과 요약, 스킬별 데미지 점유율, 스킬 사용 타임라인(간트 차트), 극딜 구간 표시, **단일 진단**을 보여준다.
 3. **두 기록 비교**: 같은 캐릭터의 시즌 간 비교나 다른 캐릭터와의 비교. 스펙 차이는 정규화하고, 스킬 구성 차이와 운용 차이를 분리해 진단한다.
-4. (확장) 직업별 랭커 기록을 수집해 통계 기준으로 진단한다.
+4. 같은 직업·기수로 저장된 기록(검색할 때마다 쌓인다) 중 DPS 또는 전투력 대비 DPS 상위 N%를 골라 통계 기준으로 진단한다.
 
 ## 3. 기술 스택과 컨벤션
 
-- Java 17, Spring Boot 4.x, Gradle, JPA/Hibernate, MySQL, Caffeine, Lombok. 프런트엔드는 Thymeleaf와 ECharts.
+- Java 17, Spring Boot 4.x, Gradle, JPA/Hibernate, MySQL, Flyway, Caffeine, Lombok. 프런트엔드는 Thymeleaf와 ECharts.
 - 디자인: 어두운 "천공" 테마(메이플스토리 연무장의 구름 위 하늘 신전 색감을 참고했고, 게임 이미지·로고는 쓰지 않는다).
   - 색은 `static/css/app.css`의 `:root` 토큰으로만 쓴다. `charts.js`도 토큰을 읽어 ECharts 테마(`battle-coach`)를 등록한다.
   - 역할: 청록(주요 동작·내 기록), 연두(실행 버튼, 글자는 짙은 남색), 보라 그라데이션(상단 수치 카드), 산호(손해·기준 기록), 금색(영향도·강조), 보라 음영(극딜 구간), 청록 음영(시퀀스).
@@ -52,10 +52,18 @@
 | `GET /maplestory/v1/ranking/overall?date=&class=&page=` | 종합 랭킹(레벨·경험치 순, 200명/페이지, ocid 없음) |
 
 ### ranking/overall
+- **지금 코드에서는 쓰지 않는다**(2026-10-01 랭커 수집기 제거). 아래는 확인한 사실로 남긴다.
 - `class` 형식은 `직업군-전직`(예: `마법사-비숍`, `전사-히어로`)이다. 전직이 없는 직업은 `칼리-전체전직`이다. 형식이 틀리면 **오류 없이 필터를 무시하고 전체 랭킹**을 준다.
+  - **직업군 이름은 응답의 `class_name`과 같다**(2026-10-01, 48개 직업 모두 1페이지가 그 직업만 오는 것을 확인). 모험가는 `전사|마법사|궁수|도적|해적-전직`, 시그너스는 `기사단-소울마스터`(미하일 포함), 레지스탕스는 `레지스탕스-데몬어벤져`, 제로는 `초월자-제로`, 키네시스는 `프렌즈 월드-키네시스`, 나머지(영웅·노바·레프·아니마·레테)는 `직업명-전체전직`이다. 전체 목록은 `scripts/collect_rankers_all.py`의 `JOBS`.
+  - 종합 랭킹 상위 1,000명에 47개 직업이 있었고, 레테를 더해 48개다.
 - **레벨 순위라 DPS 순위가 아니다.** 연무장 DPS 랭킹 API는 없다.
 - 칼리 4기 기준(2026-09-27 랭킹 184명): 기록 없음 76%(140명), 다른 기간만 18%(33명), 4기 기록 6%(11명). 4기 표본 1개에 API 약 36건이 들었다.
 - **Windows(Git Bash) curl의 `--data-urlencode`는 한글을 깨뜨린다.** 수동 호출할 때는 미리 URL 인코딩한 값을 쓴다.
+
+### 연무장 기록 목록 API는 없다 (2026-10-01, 공식 문서 확인)
+- 연무장 4개 엔드포인트는 모두 `ocid`나 `replay_id`가 필요하다. 랭킹은 overall, union, guild, dojang, theseed, achievement뿐이고 연무장 랭킹은 없다.
+- 그래서 남의 기록은 캐릭터 이름을 알아야만 얻는다. 이 서비스는 사용자가 검색한 기록을 모두 비교 풀로 쓴다(7장 "비교 풀").
+- 문서 페이지 고지: "API를 통해 데이터를 크롤링한 경우 30일 이내에 크롤링한 데이터를 갱신해야 할 의무". 이용약관 본문에는 이 조항이 없고, 결과 데이터를 허용 범위를 넘어 무단 저장·배포하지 말라는 조항(5조)과 해지 시 결과 데이터 삭제 조항(11조)이 있다.
 
 ### replay-id
 - 기간(`period_no`)마다 기록이 **최대 1건**이다. 등록하지 않은 기간은 목록에 없다(예: 4, 1만 존재).
@@ -90,6 +98,11 @@
   - 스킬 레벨이 쿨에 반영된 텍스트가 온다(에르다 노바 Lv30은 100초, Lv26은 116초).
   - **소울 컨트랙트는 `character_skill`에 없다.** 쿨을 알 수 없다.
 - `hexa_matrix_object`, `v_matrix_object`, `link_skill_object`로 스킬 구성과 레벨을 알 수 있다.
+- **쿨감 출처** (저장된 기록 36건, 9개 직업에서 합이 `final_stat`과 맞았다):
+  - 초: 장비 잠재·에디셔널의 "스킬 재사용 대기시간 -N초". 36건 모두 모자뿐이었다.
+  - %: `union_raider_object.union_raider_stat`의 "스킬 재사용 대기시간 N% 감소"(메르세데스 공격대원). 공격대원 배치·레벨 정보는 없어 레벨은 알 수 없다.
+  - 미적용: 어빌리티 "N% 확률로 재사용 대기시간이 미적용" + 유니온 아티팩트 "재사용 대기시간 미적용 확률 N% 증가". **`final_stat`은 합을 내림한 값이다**(27.5% → 27%). 진단은 내림값을 쓴다.
+  - 버프 지속시간은 유니온·아티팩트·직업 패시브 등에 흩어져 합을 맞추지 못했다.
 
 ## 5. 검증된 분석 사실 (칼리 랭커 2명 데이터로 확인)
 
@@ -109,7 +122,7 @@
 - **영향도로 오탐을 거른다.** 에르다 노바(점유율 0.0%) 누락이나 듄 버스트(0.1%) 비정렬은 무의미하다. 스틱스 3회 누락과 플레게톤 미사용은 합쳐 약 5.7초 환산으로, DPS의 약 1.7%에 해당하는 의미 있는 차이다.
 - **구성 차이와 운용 차이를 구분한다.** 플레게톤은 솔 헤카테 30레벨에 해금되는데 B는 8레벨이었다. 이건 스펙 차이다. 반면 스틱스는 쿨 52.6초인데 105초 간격으로만 썼다. 이건 운용 차이로, 팩텀 감응 설정 문제로 추정된다.
 - **극딜을 위해 아낀 것과 놀린 것을 구분해야 한다.** A는 판데모니움을 극딜 직전까지 아껴서 12회, B는 쿨마다 써서 14회였다. 이 샘플에서는 B가 초 환산 합계로 더 높았다(17.2초 vs 21.4초). 다만 샘플이 2개뿐이라 가설로만 뒀다.
-  - **칼리 4기 랭커 11명으로 확인(2026-09-28, `GET /api/admin/rankers/hold-tradeoff`, 스피어만 상관):**
+  - **칼리 4기 랭커 11명으로 확인(2026-09-28, 당시 랭커 수집 표본, 스피어만 상관. 지금은 `GET /api/admin/comparison/hold-tradeoff`로 비교 풀에서 다시 돌릴 수 있다):**
     - 판데모니움: 극딜 대기 0~27초로 제각각인데 시전 수는 모두 12~13회였다(대기 ~ 분당 시전 ρ = +0.04). 대기 ~ 초 환산은 ρ = +0.35(약한 양의 상관). **"쿨마다 쓰는 쪽이 낫다"는 2명 가설은 지지되지 않았다.** 20~27초 정도 아끼는 것은 시전 수를 줄이지 않았다. 칼리 B의 14회는 랭커 범위(12~13회) 밖이었다.
     - 스틱스: 대기 ~ 분당 시전 ρ = −0.76, 대기 ~ 초 환산 ρ = −0.54. 7회 쓴 2명은 대기가 짧았다. 쿨 51초 스킬은 아끼면 그대로 1회가 줄어든다.
     - 데스 블로섬: 대기 ~ 초 환산 ρ = +0.52, 듄 버스트: +0.57이었다. 초 환산에는 스킬·버프 레벨이 섞여 있어 인과로 읽으면 안 된다.
@@ -119,7 +132,7 @@
 
 - **1단계 (기록만으로 가능):** 극딜 구간 탐지, 점유율, 연동 스킬 쌍이 빠진 구간.
 - **2단계 (character-info 파싱):** 실효 쿨 계산, 놓친 시전 수, 버프 지속시간, 극딜 버프 자동 분류(효과 텍스트).
-- **3단계 (랭커 통계):** 스킬별 초 환산 중앙값, 극딜 시퀀스 순서 분포, 스킬 구성 채택률.
+- **3단계 (비교 대상 통계):** 스킬별 초 환산 중앙값, 극딜 시퀀스 순서 분포, 스킬 구성 채택률.
 - 진단 결과는 `Finding(type, skillBaseName, impactSeconds, message)`로 표현한다. 규칙은 `DiagnosisRule` 인터페이스로 분리한다(개방-폐쇄 원칙). `DiagnosisEngine`이 영향도 임계값(예: 1초) 미만을 걸러낸 뒤 영향도 순으로 정렬한다.
 - 단일 진단의 기준은 "프로파일(파싱과 통계)", 비교 진단의 기준은 "상대 기록"이다. 같은 엔진에 `AnalysisContext`만 다르게 넣는다.
 - 1차 버전에서 **진단 대상에서 제외**할 것:
@@ -129,7 +142,7 @@
 
 ## 7. 현재 구현 상태 (1단계 어댑터·캐시 + 조회 화면)
 
-> `./gradlew build` 통과(테스트 126개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
+> `./gradlew build` 통과(테스트 138개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
 
 ```
 com.battlecoach
@@ -173,6 +186,7 @@ com.battlecoach
   - `domain`: `CooldownStats`, `SkillText`(쿨 표기와 예외 문구 파싱), `SkillSpec`, `CharacterSpec`(헥사 VI 항목 우선), `CooldownCalculator` / `StandardCooldownCalculator`(커뮤니티 규칙)
   - `parser`: `CharacterSpecParser` / `NexonCharacterSpecParser` (`nexon.dto.CharacterInfoSpecResponse`)
 - `replay.application.CharacterSpecLoader`: 저장된 `ReplayRawData.characterInfoJson`을 파싱하고, 결과는 `characterSpec` 캐시에 둔다(크기 제한만 두고 TTL은 없다). API를 다시 부르지 않는다.
+- 쿨감 출처: `spec.parser.CooldownSourceExtractor` → `CooldownSources`(`CharacterSpec.cooldownSources`, 표시 전용) → `CooldownStatsView`(합계·출처, 출처 합이 모자라면 "기타"). 상세 화면은 요약 카드 아래 한 줄, 비교 화면은 "쿨타임 감소 · 버프 지속시간" 표(다른 값 금색).
 - `replay.application.CooldownReportService` → `CooldownReport`: 스킬별 기본·실효 쿨, 시전 수, 실측 최소·중앙 간격, "이른 사용"(실효 쿨보다 0.2초 넘게 짧은 간격 수), 비고. 상세 화면의 "스킬 쿨타임" 표로 보여준다.
 - `diagnosis` 패키지 (단일 진단. 비교 진단도 같은 엔진을 쓴다)
   - `domain`: `SkillUsage`(스킬별 시전 시각, 데미지, 실효 쿨, 지속시간, 이른 사용 비율), `BurstWindow`, `AnalysisContext`(초 환산 `toSeconds`), `Finding`(영향도 null = 참고), `FindingType`, `DiagnosisRule`, `DiagnosisEngine`(1초 미만 제거, 영향도 순), `DiagnosisResult(findings, notes)`
@@ -195,10 +209,23 @@ com.battlecoach
   - **같은 직업끼리만 비교한다.** `ReplayComparisonService.requireSameClass`가 URL을 직접 입력한 경우까지 막는다. 선택 화면에서 다른 캐릭터를 검색하면 `CharacterClassResolver`(`/character/basic` 1건, `characterClass` 캐시 1일)로 직업부터 확인한다. 다르면 기록 목록(과 본문 3건)을 부르지 않는다. `/character/basic`의 `character_class` 표기는 연무장 직업명과 같다.
   - 합친 타임라인(`renderComparisonTimeline`): 스킬마다 한 줄을 쓰고, 내 기록(파란 원)은 줄 위쪽 −0.2, 기준 기록(주황 마름모)은 아래쪽 +0.2에 찍는다. Y축은 값 축(점 위치와 줄 경계선)과 카테고리 축(줄 가운데 스킬 이름) 두 개를 겹쳐 쓴다. ECharts 값 축은 `min`부터 눈금을 매겨서, 값 축 하나로는 줄 가운데에 이름을 둘 수 없었다. Y축을 뒤집으면 X축이 0에 붙으므로 `axisLine.onZero=false`를 둔다. 극딜 구간은 기록별 색(노랑 / 주황)의 옅은 음영이다.
   - JS: `static/js/charts.js`(공통: 점유율·타임라인·비교 타임라인 차트, `window.BattleCoachCharts`) + `replay-detail.js` / `compare.js`
+- **비교 풀 (2026-10-01)**: "비교 대상 대비"는 **같은 직업·기간으로 저장된 모든 기록**(사용자 검색으로 쌓인다)에서 비교 대상을 고른다. 기간마다 랭커를 따로 모을 필요가 없다. 랭커 수집기와 `ranker_sample`·`ranker_probe` 테이블은 없앴다(V2).
+  - `ComparisonPoolLoader`(`comparisonPool` 캐시 10분): `replay` ⨝ `replay_period`로 같은 직업·기간 기록을 분석 컨텍스트로 읽는다. 진단 대상 기록은 뺀다.
+  - `ComparisonCriteria(basis, topPercent)`: 기준은 `DPS` 또는 `EFFICIENCY`(전투력 대비 DPS), 범위는 상위 10/25/50/100%. 기본값은 DPS 상위 50%. 상세 화면 `?basis=&top=`.
+  - `ComparisonSampleSelector`: 순위를 매길 수 있는 기록 수 × N%를 올림한 개수(최소 1). 전투력 대비 기준은 추세선이 없으면(전투력 있는 기록 5개 미만) 아무것도 고르지 않는다.
+  - **추세선(`EfficiencyModel`)은 고른 표본이 아니라 풀 전체로 적합한다.** 상위 N%로만 적합하면 스펙 범위가 좁아져 내 기록이 범위 밖으로 나간다. 풀 안의 기록 순위는 범위 검사 없는 `sampleEfficiencyOf`로 매긴다.
+  - 결과는 `ComparisonStatistics(statistics, criteria, poolSize)`. 고른 표본이 5개 미만이면 통계 진단을 하지 않는다(기존 `isReliable`).
+  - 화면·진단 문구는 "비교 대상"(조건으로 고른 기록)과 "저장된 기록"(풀)으로 쓴다. "랭커"는 과거 실측 사실(칼리 랭커 11명 등)을 말할 때만 쓴다.
+- **기록 모음 화면** `GET /records?period=&job=&sort=dps|efficiency` (`comparison.web.RecordBoardController`, `RecordBoardService`): 기간·직업별 저장된 기록, DPS·전투력·전투력 대비 DPS. 비교 풀과 같은 데이터다. 상단 메뉴 "기록 모음".
+- **30일 갱신** (`replay.refresh.*`, `ReplayRefreshService`): 매일 04:00(Asia/Seoul)에 마지막으로 API와 맞춘 지 25일이 지난 리플레이를 최대 100건 다시 확인한다(1건 = character-info API 1건).
+  - 조회되면 캐릭터 기본 정보(이름·직업·레벨)와 character-info 원문을 바꾸고 `replay.refreshed_at`을 남긴다. 데미지·시전 기록은 바뀌지 않는 값이라 다시 받지 않는다.
+  - 4xx(429 제외)면 API에서 지워진 기록으로 보고 본문·원문·기간을 지운다. 429·5xx면 멈추고 다음 날 이어서 한다.
+  - 수동 실행: `POST /api/admin/replays/refresh?max=50`(admin.enabled일 때만).
+  - **미확인:** character-info의 `basic_object`가 입장 시점 값인지 현재 값인지. 개명 반영 여부를 아직 보지 못했다.
 - 통계 (`diagnosis.statistics`)
   - `JobStatistics`(직업·기간별, 표본 5개 미만이면 `isReliable()=false` → 통계 규칙 미실행), `SkillDistribution`(채택률, 분당 시전·초 환산 분위수), `PairStatistic`, `pairGroups()`(쌍을 이은 묶음), `Quartiles`
   - `JobStatisticsCalculator`: 쌍은 쿨 10초 이상이면서 시전 수 ±1인 스킬끼리, 한 표본에서 A 시전의 80% 이상을 B와 1초 안에 쓰면 짝이다. 표본의 80% 이상이 짝이면 남긴다.
-  - `JobStatisticsProvider`(인터페이스) ← `ranker.application.JobStatisticsService`(저장된 표본으로 계산, 진단 대상 기록은 뺀다, `jobStatistics` 캐시 10분)
+  - `JobStatisticsProvider`(인터페이스) ← `comparison.application.JobStatisticsService`(비교 풀에서 조건으로 고른 표본으로 계산, 진단 대상 기록은 뺀다, `jobStatistics` 캐시 10분)
   - 규칙: `CastRateRule`(분당 시전이 랭커 하위 25% 미만 → 중앙값까지 모자란 시전 × 내 1회 초 환산), `LinkedPairRule`(랭커 대부분이 함께 쓰는 쌍을 절반 미만으로 함께 썼으면 참고)
   - **표본 품질(운용 효율)**: `EfficiencyModelFitter` → `EfficiencyModel`(`JobStatistics.efficiency`). 같은 직업·기간 랭커로 `log DPS ~ log 전투력 [+ 헥사 코어 레벨 합]`을 최소제곱 적합하고, 실제 DPS가 추세보다 몇 % 높은지를 운용 효율로 본다.
     - 전투력(`final_stat`의 "전투력")에는 헥사·5차 스킬 레벨이 빠지고 직업마다 산식이 다르다(사용자 확인). 그래서 같은 직업 안에서만 쓰고, 표본 8개 이상이면 헥사 합(`hexa_matrix_object`)을 넣는다. 표본 5개 미만이면 만들지 않는다.
@@ -208,11 +235,11 @@ com.battlecoach
     - maplescouter "헥사환산"은 공식을 모르고 외부 서비스 값이라 쓰지 않았다. 랭커끼리는 헥사 항의 설명력이 작아 이득도 작다고 판단했다.
   - **초 환산은 스킬 레벨이 같은 랭커끼리 비교한다**: `SkillDistribution.secondsFor(SkillLevel)`. 레벨은 스킬 레벨 + 강화 코어 레벨(`character_skill`에 "헥스 : 판데모니움 강화"처럼 따로 온다. V 매트릭스 강화 코어는 최대 60). 같은 레벨 랭커가 5명 미만이거나 내 레벨을 모르면 전체 분포로 비교하고 차트 이름에 `*`를 붙인다. 칼리 랭커 1명 기준 20개 중 14개가 같은 레벨로 비교됐다. 칼리 B는 레벨이 낮아 대부분 전체 분포였다.
   - 칼리 4기 묶음: 2분 극딜 버프 6개(레이스 오브 갓, 매직 서킷, 그란디스, 오블리비온, 레조네이트 : 얼티메이텀, 리스트레인트 링), 1분 주기 데스 블로섬·스틱스·레디 투 다이(91%), 스파이더 인 미러·크레스트 오브 더 솔라
-- `ranker` 패키지 (수집)
-  - `RankerCollector`: 종합 랭킹 순서대로 ocid → 기록 목록 → 대상 기간 기록을 `ReplayQueryService`로 저장하고 `RankerSample`로 등록한다. 결과는 `RankerProbe`(NOT_FOUND / NO_RECORD / OTHER_PERIOD_ONLY / SAMPLED)로 남겨 다시 부르지 않는다. 다음 단계 호출이 상한을 넘으면 그 전에 멈춘다. `TaskExecutor`로 비동기 실행하며 한 번에 하나만 돈다.
-  - `RankerAdminController`(`collector.enabled=true`일 때만 등록, 인증 없음 → 로컬 전용): `POST /api/admin/rankers/collect?jobClass=칼리-전체전직&maxCalls=400&maxRankers=200`, `GET /status`, `GET /statistics?characterClass=칼리&periodNo=4`
-- 상세 화면 구성(위에서부터): 요약 카드 → 섹션 이동 칩(고정) → 진단(한 줄 요약 "고칠 점 N개 · 합계 X초 손해" + 카드) → 랭커 대비 → 쿨 대비 실제 사용 간격 → 점유율 → 타임라인. 수치 표는 모두 "전체 수치 보기"로 접는다.
-  - 랭커 대비: "랭커 분포 속 내 위치" 차트(`renderRankerDistribution`, 랭커 25~75% 띠·중앙값 선·내 값 점, 랭커 중앙값 = 100%로 맞춤, 탭으로 분당 시전 수 / 초 환산 전환, 하위 25% 미만은 산호색 점으로 위에), 함께 쓰는 스킬 묶음 칩(절반 넘게 따로 쓰면 산호), 극딜 순서 칩 두 줄(랭커 표준 / 내 첫 극딜, 어긋난 스킬은 금색). 기간을 모르면(목록을 거치지 않음) 안내만 한다.
+- `comparison` 패키지: `ComparisonPoolLoader`, `JobStatisticsService`, `HoldTradeoffService`, `RecordBoardService`, `RecordBoardController`(`/records`)
+  - `ComparisonAdminController`(`admin.enabled=true`일 때만 등록, 인증 없음 → 로컬 전용): `GET /api/admin/comparison/statistics?characterClass=칼리&periodNo=4[&basis=&top=]`, `GET /api/admin/comparison/hold-tradeoff?characterClass=&periodNo=&skill=[&basis=&top=]`
+  - 랭커 수집기(종합 랭킹 → ocid → 기록 목록 → 표본 등록)는 2026-10-01에 없앴다. API의 80%가 기록 없는 랭커 확인에 들었고, 검색 기록으로 비교 풀을 만들면서 필요 없어졌다.
+- 상세 화면 구성(위에서부터): 요약 카드 → 섹션 이동 칩(고정) → 진단(한 줄 요약 "고칠 점 N개 · 합계 X초 손해" + 카드) → 비교 대상 대비(비교 조건 선택) → 쿨 대비 실제 사용 간격 → 점유율 → 타임라인. 수치 표는 모두 "전체 수치 보기"로 접는다.
+  - 비교 대상 대비: "비교 대상 분포 속 내 위치" 차트(`renderPeerDistribution`, 25~75% 띠·중앙값 선·내 값 점, 중앙값 = 100%로 맞춤, 탭으로 분당 시전 수 / 초 환산 전환, 하위 25% 미만은 산호색 점으로 위에), 함께 쓰는 스킬 묶음 칩(절반 넘게 따로 쓰면 산호), 극딜 순서 칩 두 줄(비교 대상 표준 / 내 첫 극딜, 어긋난 스킬은 금색). 기간을 모르면(목록을 거치지 않음) 안내만 한다.
   - 쿨 대비 실제 사용 간격(`renderCooldownUsage`): 중앙 사용 간격 ÷ 실효 쿨. 1.15배 이하 청록, 1.5배 이하 금색, 그 이상 산호. 판단 제외 스킬은 회색으로 아래에 둔다. 제외 기준은 `CooldownReport.Row.usageExclusion`으로 서버가 준다(놓친 시전과 같은 `CooldownEligibility` 기준: 쿨 모름 / 15초 미만 / 쿨 변동).
   - 차트 데이터는 `analysis-data` 스크립트(`ReplayPageController.AnalysisChartData`)로 넘긴다.
 - **처방과 쉰 구간 (B1·B2)**
@@ -229,7 +256,10 @@ com.battlecoach
 - `SequenceSegment`(domain): `sequence_key`가 같은 시전을 기록 순서대로 묶어 실행 구간을 만든다. 사이에 끼어든 일반 시전은 무시하고, 같은 키의 직전 시전과 10초(`MAX_GAP_MS`)보다 멀면 새 실행으로 본다. 실측으로 확인한 실행 안의 간격은 1.1초 이하, 실행 사이 간격은 52.8초 이상이다. `Replay.getSequenceSegments()` → `ReplayDetail.sequenceSegments`.
 
 - 테스트: `SingleFlightTest`(CountDownLatch로 동시성 검증), `SkillNameTest`, `NexonDatesTest`, `SequenceSegmentTest`, `KoreanNumberFormatTest`, `SkillTextTest`, `StandardCooldownCalculatorTest`, `NexonCharacterSpecParserTest`(샘플 `src/test/resources/nexon/character-info-kali.json`: 칼리 A 원문에서 basic, final_stat, character_skill만 남김)
-- 설정: `application.yml`은 `${NEXON_API_KEY}`, `${DB_USERNAME}`, `${DB_PASSWORD}`만 참조한다. 로컬 값은 `src/main/resources/application-local.yml`(gitignore, `spring.config.import: optional:`)에 둔다. 스키마는 `ddl-auto: update`로 생성.
+- 설정: `application.yml`은 `${NEXON_API_KEY}`, `${DB_USERNAME}`, `${DB_PASSWORD}`만 참조한다. 로컬 값은 `src/main/resources/application-local.yml`(gitignore, `spring.config.import: optional:`)에 둔다. 스키마는 **Flyway**(`src/main/resources/db/migration`)로만 바꾼다. Hibernate는 `ddl-auto: validate`라 엔티티와 스키마가 다르면 시작할 때 실패한다. 엔티티를 바꾸면 `V{n}__설명.sql`을 함께 추가한다.
+  - `V1__init_schema.sql`은 2026-10-01까지 `ddl-auto: update`로 만든 스키마를 그대로 옮긴 것이다(외래 키 이름도 Hibernate가 만든 이름 그대로). V1로 만든 빈 DB와 기존 DB의 스키마가 같은 것을 mysqldump 비교로 확인했다.
+  - 기존 DB는 `baseline-on-migrate: true`, `baseline-version: 1`로 V1을 실행하지 않고 적용된 것으로 표시된다(로컬 DB 확인 완료). 빈 DB는 V1부터 실행한다.
+  - `V2__drop_ranker_collection.sql`: 랭커 수집기를 없애며 `ranker_sample`, `ranker_probe`를 지웠다. 수집한 리플레이 본문은 `replay`에 남아 비교 풀에 들어간다.
 
 ## 8. 이제 해야 할 것
 
@@ -290,13 +320,13 @@ com.battlecoach
 ### 5) 랭커 수집과 3단계 진단 (확장)
 - [x] 종합 랭킹 API(직업 필터) → ocid → replay-id 수집 배치. 호출량 제한을 지키고, 연무장 기록 보유율을 먼저 측정한다. (칼리 4기 표본 11개, 보유율은 위 4장)
 - [x] 직업별 스킬 통계(초 환산 분위수, 분당 시전, 스킬 채택률, 함께 쓰는 묶음), `period_no`별로 관리
-- [x] `CastRateRule`, `LinkedPairRule`, 상세 화면 "랭커 대비"
+- [x] `CastRateRule`, `LinkedPairRule`, 상세 화면 "랭커 대비"(지금은 "비교 대상 대비")
 - [x] 극딜 시퀀스 순서 분포(랭커 표준 순서)
   - `BurstOrderExtractor.burstCasts`: 모든 극딜 구간(시작 −5초 ~ +15초)에서 쿨 10초 이상 스킬의 첫 시전. 칼리 표본 11개에서 극딜 33회를 얻었다.
   - `BurstOrderStatistics`(`JobStatistics.burstOrder`): 스킬별 극딜 채택률, 상대 위치 중앙값(0 = 맨 앞, 1 = 맨 뒤), 합의된 앞뒤 쌍. 1초 안에 함께 나간 쌍은 같은 매크로로 보고 순서에서 뺀다. 극딜의 80% 이상에서 먼저면 합의로 본다.
   - 칼리 4기 표준 순서(채택률 50% 이상): 데스 블로섬 → 레이스 오브 갓 → 매직 서킷 → 그란디스 → 플레게톤(82%) → 오블리비온 → 레조네이트 : 얼티메이텀 → 리스트레인트 링 → 레디 투 다이 → 스틱스 → 판데모니움 → 듄 버스트 → 보이드 버스트. 합의 쌍 21개는 대부분 "매크로 스킬들 → 듄 버스트·보이드 버스트"다.
   - `BurstOrderRule`: 합의 쌍을 내 극딜 절반 넘게 반대로 쓰면 참고로 낸다(스킬당 합의율이 가장 높은 쌍 하나). 칼리 B의 "보이드 버스트 → 스틱스"는 0.3~0.6초 간격이라 동시로 보고 내지 않는다. 그 차이는 "연동 스킬 따로 사용"과 순서 표에 이미 드러난다.
-  - 상세 화면 "랭커 대비"에 내 첫 극딜 순서와 표준 순서를 Needleman-Wunsch로 나란히 보여준다.
+  - 상세 화면 "비교 대상 대비"에 내 첫 극딜 순서와 표준 순서를 Needleman-Wunsch로 나란히 보여준다.
 - [x] 다른 직업 수집으로 파서·진단 기준값 검증 (2026-09-28, 4기 표본: 아크메이지(썬,콜) 1, 나이트로드 1, 히어로 1, 보우마스터 3)
   - 수집: 직업당 110건으로 랭커 약 50명씩 확인했다. 4기 기록 보유율은 2~6%로 칼리(6%)보다 낮았다. 직업당 표본 5개면 150~250건이 든다.
   - **API 비용의 대부분은 기록이 없는 랭커 확인이다.** 2026-09-28 하루 약 950건 중 786건이 랭커 393명 확인(ocid + 기록 목록 2건씩)이었다. 그중 316명(80%)은 기록이 없었다. 리플레이 본문은 약 51건이었다. 랭킹 API가 ocid를 주지 않아 이 2건은 줄일 수 없다. 확인 결과는 `ranker_probe`에 남아 다시 들지 않는다.
@@ -315,9 +345,9 @@ com.battlecoach
       - 비교: 판데모니움(23~26초)은 칼리 11명 모두 0~2회, 시전 대비 11%였다.
     - **결정(2026-09-29)**: `MissedCastRule`(내 기록만 보는 절대 기준)만 대상 쿨을 15초 이상으로 올렸다(`CooldownEligibility.MIN_ABSOLUTE_COOLDOWN_MS`). `CastRateRule`·`CastCountGapRule`(상대 비교)은 구조적 손실이 기준 쪽에도 똑같이 있어 상쇄되므로 10초를 유지한다. 반영 후 나이트로드 표본 1명의 포 시즌·써든레이드, 보우마스터 표본 1명의 윈드 오브 프레이 오탐이 사라졌고, 칼리 기록의 진단은 그대로였다.
   - 보우마스터 표본 1명의 스틱스 4회 누락(극딜 대기 242.8초)은 칼리 B와 같은 패턴이다(2분 극딜에만 사용).
-- [x] "아낀 것 vs 놀린 것" 가설 검증 → 결과는 5장. `IdleBreakdown`(쉰 시간을 극딜 대기 / 그 외 / 전투 종료 전으로 나눔, `MissedCastRule`과 공유), `HoldTradeoffAnalyzer`, `Correlation.spearman`, `RankerSampleLoader`(표본 로딩 공유)
-  - [ ] 표본이 늘면 다시 돌려 본다. (스킬 레벨이 같은 표본끼리 비교하는 방식은 "랭커 대비" 초 환산에 적용했다.)
-- [ ] 서비스 키 승인 신청(하루 1,000건으로는 수집이 불가능)
+- [x] "아낀 것 vs 놀린 것" 가설 검증 → 결과는 5장. `IdleBreakdown`(쉰 시간을 극딜 대기 / 그 외 / 전투 종료 전으로 나눔, `MissedCastRule`과 공유), `HoldTradeoffAnalyzer`, `Correlation.spearman`
+  - [ ] 표본이 늘면 다시 돌려 본다. (스킬 레벨이 같은 표본끼리 비교하는 방식은 "랭커 대비" 초 환산에 적용했다. `GET /api/admin/comparison/hold-tradeoff`로 비교 풀에서 돌린다.)
+- [ ] 서비스 키 승인 신청(공개 운영할 때. 수집기를 없앤 뒤로는 개발 키로도 검색과 30일 갱신은 충분하다)
 
 ### 나중에 고려
 - 서버를 여러 대로 늘릴 때 `NexonRateLimiter`와 `SingleFlight`를 Redis 기반으로 교체

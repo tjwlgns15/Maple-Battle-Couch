@@ -13,7 +13,7 @@ import com.battlecoach.spec.domain.SkillLevel;
 
 import lombok.RequiredArgsConstructor;
 
-/** 랭커 표본(기록별 분석 컨텍스트)에서 직업 통계를 계산한다. */
+/** 비교 대상 표본(기록별 분석 컨텍스트)에서 직업 통계를 계산한다. */
 @Component
 @RequiredArgsConstructor
 public class JobStatisticsCalculator {
@@ -28,11 +28,15 @@ public class JobStatisticsCalculator {
     static final long MIN_PAIR_COOLDOWN_MS = 10_000;
 
     private final BurstOrderStatisticsCalculator burstOrderStatisticsCalculator;
-    private final EfficiencyModelFitter efficiencyModelFitter;
 
-    /** 분당 시전·초 환산 분위수만 운용 효율로 가중한다. 극딜 순서와 함께 쓰는 쌍은 가중치 없이 센다. */
-    public JobStatistics calculate(String characterClass, int periodNo, List<AnalysisContext> samples) {
-        EfficiencyModel efficiency = efficiencyModelFitter.fit(samples).orElse(null);
+    /**
+     * 분당 시전·초 환산 분위수만 운용 효율로 가중한다. 극딜 순서와 함께 쓰는 쌍은 가중치 없이 센다.
+     *
+     * @param efficiency 표본을 고른 풀 전체로 적합한 추세선. 상위 N% 만 고른 표본으로 적합하면 스펙 범위가 좁아져
+     *                   내 기록이 범위 밖으로 나가기 쉽다. 없으면 null
+     */
+    public JobStatistics calculate(String characterClass, int periodNo, List<AnalysisContext> samples,
+                                   EfficiencyModel efficiency) {
         return new JobStatistics(characterClass, periodNo, samples.size(), distributions(samples, efficiency),
                 pairs(samples), burstOrderStatisticsCalculator.calculate(samples), efficiency);
     }

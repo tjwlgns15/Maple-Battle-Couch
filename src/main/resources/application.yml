@@ -23,10 +23,16 @@ spring:
       cache:
         cachecontrol:
           max-age: 365d
+  flyway:
+    # 스키마는 src/main/resources/db/migration 의 마이그레이션으로만 바꾼다.
+    # 기존 DB(ddl-auto 로 만든 스키마, 이력 테이블 없음)는 V1 을 실행하지 않고 V1 로 표시한다. 빈 DB 는 V1 부터 실행한다.
+    baseline-on-migrate: true
+    baseline-version: 1
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      # 엔티티와 스키마가 다르면 시작할 때 실패한다. 엔티티를 바꾸면 마이그레이션을 함께 추가한다.
+      ddl-auto: validate
     properties:
       hibernate:
         jdbc:
@@ -45,6 +51,15 @@ cache:
   replay-list-ttl: 10m
   job-statistics-ttl: 10m
 
-# 랭커 수집 관리 API(/api/admin/rankers). 인증이 없으므로 로컬에서만 켠다(application-local.yml).
-collector:
+# 관리 API(/api/admin/comparison, /api/admin/replays). 인증이 없으므로 로컬에서만 켠다(application-local.yml).
+admin:
   enabled: false
+
+# 저장된 리플레이 갱신. Nexon Open API 문서 고지: 크롤링한 데이터는 30일 이내에 갱신해야 한다.
+# 마지막 확인 후 25일이 지난 리플레이를 매일 04:00에 최대 100건 다시 확인한다(1건 = API 1건).
+replay:
+  refresh:
+    enabled: true
+    cron: "0 0 4 * * *"
+    max-age: 25d
+    max-per-run: 100

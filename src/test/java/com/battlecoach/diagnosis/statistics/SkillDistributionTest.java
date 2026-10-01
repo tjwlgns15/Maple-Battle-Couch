@@ -17,7 +17,7 @@ class SkillDistributionTest {
     private static final SkillLevel LOW = new SkillLevel(30, 10);
 
     @Test
-    void 레벨이_같은_랭커가_5명_이상이면_그들만으로_비교한다() {
+    void 레벨이_같은_비교_대상이_5개_이상이면_그들만으로_비교한다() {
         List<SecondsSample> samples = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             samples.add(new SecondsSample(20 + i, MAX, 1.0));

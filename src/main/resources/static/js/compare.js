@@ -11,7 +11,7 @@
     resizeOnWindowChange([
         renderCastGapChart(document.getElementById('cast-gap-chart'), data.skills, data.playTimeScale,
             document.getElementById('cast-gap-summary')),
-        renderShareGapChart(document.getElementById('share-gap-chart'), data.skills),
+        renderShareGapChart(document.getElementById('share-gap-chart'), data.skills, data.playTimeScale),
         renderComparisonTimeline(
             document.getElementById('compare-timeline'),
             { label: `내 기록 (${data.base.characterName})`, casts: data.base.casts, bursts: data.baseBursts },

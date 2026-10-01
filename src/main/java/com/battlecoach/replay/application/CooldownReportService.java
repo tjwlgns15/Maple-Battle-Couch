@@ -11,6 +11,7 @@ import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 import com.battlecoach.diagnosis.rule.CooldownEligibility;
 import com.battlecoach.replay.application.dto.CooldownReport;
+import com.battlecoach.replay.application.dto.CooldownStatsView;
 import com.battlecoach.replay.application.dto.CooldownReport.Note;
 import com.battlecoach.replay.application.dto.CooldownReport.Row;
 import com.battlecoach.spec.domain.SkillSpec;
@@ -28,7 +29,8 @@ public class CooldownReportService {
                 .map(skill -> toRow(skill, context.spec().find(skill.baseName()), usageExclusion(skill, context)))
                 .sorted(ORDER)
                 .toList();
-        return new CooldownReport(context.cooldownStats(), rows);
+        return new CooldownReport(
+                CooldownStatsView.of(context.cooldownStats(), context.spec().cooldownSources()), rows);
     }
 
     /** 놓친 시전 진단(MissedCastRule)과 같은 기준으로, 쿨마다 썼는지 판단하지 않는 이유를 적는다. */

@@ -6,7 +6,7 @@ import java.util.Optional;
 import com.battlecoach.spec.domain.SkillLevel;
 
 /**
- * 랭커 표본에서 본 스킬 하나의 분포. 분위수는 운용 효율 하위 25% 표본의 가중치를 낮춰 계산한다({@link EfficiencyModel}).
+ * 비교 대상 표본에서 본 스킬 하나의 분포. 분위수는 운용 효율 하위 25% 표본의 가중치를 낮춰 계산한다({@link EfficiencyModel}).
  *
  * @param userCount      이 스킬을 한 번이라도 쓴 표본 수
  * @param adoptionRate   userCount / 전체 표본 수
@@ -32,7 +32,7 @@ public record SkillDistribution(
     }
 
     /**
-     * 초 환산은 그 스킬의 레벨(과 강화 코어 레벨)에 크게 좌우되므로 레벨이 같은 랭커와 비교한다.
+     * 초 환산은 그 스킬의 레벨(과 강화 코어 레벨)에 크게 좌우되므로 레벨이 같은 비교 대상과 비교한다.
      * 다른 스킬·버프 레벨 차이는 여전히 섞여 있다(초 환산은 합이 전투 시간인 상대 지표).
      *
      * @param myLevel 내 스킬 레벨. 모르면 null
@@ -59,7 +59,7 @@ public record SkillDistribution(
     public record SecondsSample(double seconds, SkillLevel level, double weight) {
     }
 
-    /** @param levelMatched 레벨이 같은 랭커만으로 계산했는지 */
+    /** @param levelMatched 레벨이 같은 비교 대상만으로 계산했는지 */
     public record SecondsBasis(Quartiles quartiles, int sampleCount, boolean levelMatched) {
     }
 }

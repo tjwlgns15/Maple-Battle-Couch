@@ -2,7 +2,7 @@
     'use strict';
 
     const {
-        renderShareChart, renderTimelineChart, renderRankerDistribution, renderCooldownUsage,
+        renderShareChart, renderTimelineChart, renderPeerDistribution, renderCooldownUsage,
         attachIdleOverlay, resizeOnWindowChange, readJson,
     } = window.BattleCoachCharts;
 
@@ -35,18 +35,18 @@
         });
     });
 
-    // 랭커 대비는 표본이 있을 때만 그린다. 탭으로 지표를 바꾼다.
-    const rankerEl = document.getElementById('ranker-chart');
-    if (rankerEl && analysis.standing.length > 0) {
-        const ranker = renderRankerDistribution(rankerEl, analysis.standing, 'rate');
-        charts.push(ranker.chart);
+    // 비교 대상 대비는 표본이 있을 때만 그린다. 탭으로 지표를 바꾼다.
+    const standingEl = document.getElementById('standing-chart');
+    if (standingEl && analysis.standing.length > 0) {
+        const standing = renderPeerDistribution(standingEl, analysis.standing, 'rate');
+        charts.push(standing.chart);
         document.querySelectorAll('.tabs .tab').forEach((tab) => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.tabs .tab').forEach((t) => {
                     t.classList.toggle('active', t === tab);
                     t.setAttribute('aria-selected', String(t === tab));
                 });
-                ranker.setMetric(tab.dataset.metric);
+                standing.setMetric(tab.dataset.metric);
             });
         });
     }

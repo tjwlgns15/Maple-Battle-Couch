@@ -29,6 +29,7 @@ public class CacheConfig {
         manager.registerCustomCache(CacheNames.CHARACTER_CLASS, expiringAfter(properties.ocidTtl()));
         manager.registerCustomCache(CacheNames.REPLAY_LIST, expiringAfter(properties.replayListTtl()));
         manager.registerCustomCache(CacheNames.JOB_STATISTICS, expiringAfter(properties.jobStatisticsTtl()));
+        manager.registerCustomCache(CacheNames.COMPARISON_POOL, expiringAfter(properties.jobStatisticsTtl()));
         manager.registerCustomCache(CacheNames.CHARACTER_SPEC, Caffeine.newBuilder()
                 .maximumSize(MAX_SPEC_ENTRIES)
                 .build());

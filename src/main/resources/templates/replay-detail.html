@@ -41,9 +41,25 @@
         </div>
     </section>
 
+    <section class="spec-stats" aria-label="쿨타임 감소와 버프 지속시간">
+        <div class="spec-stat" th:each="item : ${cooldowns.stats().items()}">
+            <span class="label" th:text="${item.name()}">쿨타임 감소</span>
+            <span class="value"
+                  th:text="|${item.sign()}${@koreanNumberFormat.plain(item.total())}${item.unit()}|">-5초</span>
+            <span class="source" th:if="${item.sourcesTracked() and #lists.isEmpty(item.displaySources())}">출처 없음</span>
+            <span class="source" th:unless="${item.sourcesTracked()}">출처가 여러 곳이라 합계만 보여줍니다</span>
+            <span class="source" th:unless="${#lists.isEmpty(item.displaySources())}">
+                <th:block th:each="src, it : ${item.displaySources()}"
+                          th:text="|${src.label()} ${@koreanNumberFormat.plain(src.value())}${item.unit()}${it.last ? '' : ' · '}|">모자 잠재능력 3초</th:block>
+                <th:block th:if="${item.roundedDown()}"
+                          th:text="| (게임 표기는 합 ${@koreanNumberFormat.plain(item.sourceSum())}%를 내림)|"></th:block>
+            </span>
+        </div>
+    </section>
+
     <nav class="section-nav" aria-label="섹션 이동">
         <a href="#diagnosis">진단</a>
-        <a href="#ranker">랭커 대비</a>
+        <a href="#standing">비교 대상</a>
         <a href="#cooldown">쿨 사용</a>
         <a href="#share">점유율</a>
         <a href="#timeline">타임라인</a>
@@ -93,63 +109,86 @@
         </details>
     </section>
 
-    <section id="ranker" class="panel" th:with="st=${standing}">
-        <h2 data-label="Ranker Standing">랭커 대비</h2>
+    <section id="standing" class="panel" th:with="st=${standing}">
+        <h2 data-label="Peer Standing">비교 대상 대비</h2>
+        <th:block th:if="${st.periodNo() != null}">
+            <nav class="filter-row" aria-label="비교 기준">
+                <span class="filter-label">기준</span>
+                <a th:each="b : ${basisOptions}" class="pill"
+                   th:classappend="${b == criteria.basis()} ? 'active'"
+                   th:attr="aria-current=${b == criteria.basis()} ? 'true' : null"
+                   th:href="@{/replays/{id}(id=${r.replayId()}, basis=${b.name()}, top=${criteria.topPercent()})} + '#standing'"
+                   th:text="${b.label()}">DPS</a>
+            </nav>
+            <nav class="filter-row" aria-label="비교 범위">
+                <span class="filter-label">범위</span>
+                <a th:each="p : ${percentOptions}" class="pill"
+                   th:classappend="${p == criteria.topPercent()} ? 'active'"
+                   th:attr="aria-current=${p == criteria.topPercent()} ? 'true' : null"
+                   th:href="@{/replays/{id}(id=${r.replayId()}, basis=${criteria.basis().name()}, top=${p})} + '#standing'"
+                   th:text="${p == 100} ? '전체' : |상위 ${p}%|">상위 25%</a>
+            </nav>
+        </th:block>
         <p th:unless="${st.isAvailable()}" class="empty-inline" th:text="${st.unavailableReason()}">표본 없음</p>
         <th:block th:if="${st.isAvailable()}">
             <p class="muted small">
-                같은 직업 <span th:text="${st.periodNo()}">4</span>기 기록이 있는 종합 랭킹(레벨 순) 상위 캐릭터
-                <b th:text="${st.sampleCount()} + '명'">7명</b>과 비교했습니다. 레벨 순위라 실력 순위와는 다를 수 있습니다.
-                <span th:unless="${st.reliable()}" class="negative">표본이 5명 미만이라 통계 진단은 하지 않았습니다.</span>
+                같은 직업 <span th:text="${st.periodNo()}">4</span>기로 이 사이트에 저장된 기록
+                <a th:href="@{/records(period=${st.periodNo()}, job=${r.characterClass()}, sort=${criteria.basis().name() == 'EFFICIENCY'} ? 'efficiency' : 'dps')}"
+                   th:text="${st.poolSize()} + '개'">20개</a>(이 기록 제외) 중
+                <b th:text="|${st.criteria().label()} ${st.sampleCount()}개|">DPS 상위 50% 10개</b>를 비교 대상으로 삼았습니다.
+                <th:block th:if="${criteria.basis().name() == 'DPS'}">DPS 상위는 스펙도 높은 기록이 많습니다.</th:block>
+                <th:block th:unless="${criteria.basis().name() == 'DPS'}">전투력 대비 DPS 상위는 스펙에 비해 잘 친 기록입니다.</th:block>
+                <span th:unless="${st.reliable()}" class="negative">비교 대상이 5개 미만이라 통계 진단은 하지 않았습니다. 범위를 넓혀 보세요.</span>
             </p>
 
             <div class="efficiency" th:if="${st.efficiency() != null}" th:with="e=${st.efficiency()}">
                 <h3 class="chart-title">스펙 대비 DPS</h3>
                 <p class="efficiency-value" th:if="${e.mine() != null}">
-                    랭커 추세보다
+                    같은 직업·기간 기록의 추세보다
                     <b th:classappend="${e.mine() < 0} ? 'negative' : 'positive'"
                        th:text="|${e.mine() >= 0 ? '+' : ''}${#numbers.formatDecimal(e.mine() * 100, 1, 1)}%|">+3.2%</b>
                     <span class="muted small"
-                          th:text="|(랭커 ${#numbers.formatDecimal(e.rankerMin() * 100, 1, 1)}% ~ +${#numbers.formatDecimal(e.rankerMax() * 100, 1, 1)}%)|">(랭커 −6.0% ~ +5.9%)</span>
+                          th:text="|(저장된 기록 ${#numbers.formatDecimal(e.poolMin() * 100, 1, 1)}% ~ +${#numbers.formatDecimal(e.poolMax() * 100, 1, 1)}%)|">(저장된 기록 −6.0% ~ +5.9%)</span>
                 </p>
                 <p class="muted small" th:if="${e.mine() == null and !e.isOutOfRange()}">이 기록은 전투력 정보가 없어 계산하지 못했습니다.</p>
                 <p class="small" th:if="${e.isOutOfRange()}">
-                    이 기록의 스펙이 랭커 범위 밖이라 계산하지 않았습니다.
+                    이 기록의 스펙이 저장된 기록들의 스펙 범위 밖이라 계산하지 않았습니다.
                     <span class="muted"
-                          th:text="|전투력 ${#numbers.formatDecimal(e.myPower().combatPower() / 1.0E8, 1, 2)}억${e.usesHexa() ? ', 헥사 합 ' + e.myPower().hexaLevelSum() : ''} / 랭커 ${#numbers.formatDecimal(e.minPower().combatPower() / 1.0E8, 1, 2)}~${#numbers.formatDecimal(e.maxPower().combatPower() / 1.0E8, 1, 2)}억${e.usesHexa() ? ', 헥사 합 ' + e.minPower().hexaLevelSum() + '~' + e.maxPower().hexaLevelSum() : ''}|">전투력 3.01억</span>
-                    랭커 범위 밖으로 추세선을 늘리면 스펙 차이가 운용 차이처럼 보입니다.
+                          th:text="|전투력 ${#numbers.formatDecimal(e.myPower().combatPower() / 1.0E8, 1, 2)}억${e.usesHexa() ? ', 헥사 합 ' + e.myPower().hexaLevelSum() : ''} / 저장된 기록 ${#numbers.formatDecimal(e.minPower().combatPower() / 1.0E8, 1, 2)}~${#numbers.formatDecimal(e.maxPower().combatPower() / 1.0E8, 1, 2)}억${e.usesHexa() ? ', 헥사 합 ' + e.minPower().hexaLevelSum() + '~' + e.maxPower().hexaLevelSum() : ''}|">전투력 3.01억</span>
+                    범위 밖으로 추세선을 늘리면 스펙 차이가 운용 차이처럼 보입니다.
                 </p>
                 <p class="muted small">
-                    랭커 <span th:text="${e.sampleCount()}">11</span>명의 전투력<span th:if="${e.usesHexa()}">과 헥사 코어 레벨 합</span>으로
-                    예상한 DPS와 실제 DPS의 차이입니다. 전투력에는 헥사·5차 스킬 레벨이 빠져 있어
+                    같은 직업·기간 기록 <span th:text="${e.sampleCount()}">11</span>개의 전투력<span th:if="${e.usesHexa()}">과 헥사 코어 레벨 합</span>으로
+                    예상한 DPS와 실제 DPS의 차이입니다. 비교 조건과 상관없이 저장된 기록 전체로 추세선을 그립니다.
+                    전투력에는 헥사·5차 스킬 레벨이 빠져 있어
                     <th:block th:if="${e.usesHexa()}">헥사 코어 레벨 합을 함께 넣었습니다.</th:block>
-                    <th:block th:unless="${e.usesHexa()}">표본이 8명 이상이면 헥사 코어 레벨 합도 넣습니다. 지금은 그 차이가 섞여 있습니다.</th:block>
+                    <th:block th:unless="${e.usesHexa()}">기록이 8개 이상이면 헥사 코어 레벨 합도 넣습니다. 지금은 그 차이가 섞여 있습니다.</th:block>
                     운용 말고도 미적용 발동 같은 운이 섞인 값이라 참고로만 보세요.
-                    추세보다 가장 낮은 25% 랭커는 아래 분포에서 가중치를 <span th:text="${e.lowWeight()}">0.5</span>로 낮췄습니다.
+                    비교 대상 중 추세 하위 25%에 드는 기록은 아래 분포에서 가중치를 <span th:text="${e.lowWeight()}">0.5</span>로 낮췄습니다.
                 </p>
             </div>
 
-            <h3 class="chart-title">랭커 분포 속 내 위치</h3>
+            <h3 class="chart-title">비교 대상 분포 속 내 위치</h3>
             <p class="muted small">
-                옅은 띠는 랭커 가운데 50%(25~75%), 세로선은 랭커 중앙값, 점은 내 값입니다. 스킬마다 눈금이 달라 랭커 중앙값을 100%로 맞췄습니다.
-                <b class="negative">산호색 점</b>은 랭커 하위 25%보다 낮은 스킬입니다.
-                딜 비중은 스킬 레벨(강화 코어 레벨 포함)이 같은 랭커가 5명 이상이면 그 랭커들과만 비교합니다.
-                이름 뒤 <b>*</b>는 같은 레벨 랭커가 부족해 레벨과 무관한 전체 분포와 비교한 스킬입니다.
+                옅은 띠는 비교 대상 가운데 50%(25~75%), 세로선은 비교 대상 중앙값, 점은 내 값입니다. 스킬마다 눈금이 달라 비교 대상 중앙값을 100%로 맞췄습니다.
+                <b class="negative">산호색 점</b>은 비교 대상 하위 25%보다 낮은 스킬입니다.
+                딜 비중은 스킬 레벨(강화 코어 레벨 포함)이 같은 비교 대상이 5개 이상이면 그 기록들과만 비교합니다.
+                이름 뒤 <b>*</b>는 같은 레벨 비교 대상이 부족해 레벨과 무관한 전체 분포와 비교한 스킬입니다.
             </p>
             <div class="tabs" role="tablist" aria-label="비교 지표">
                 <button type="button" class="tab active" role="tab" aria-selected="true" data-metric="rate">분당 시전 수</button>
                 <button type="button" class="tab" role="tab" aria-selected="false" data-metric="seconds">딜 비중(초 환산)</button>
             </div>
-            <div id="ranker-chart" class="chart"></div>
+            <div id="standing-chart" class="chart"></div>
 
             <th:block th:unless="${#lists.isEmpty(st.groups())}">
-                <h3 class="chart-title">랭커 다수가 함께 쓰는 스킬 묶음</h3>
+                <h3 class="chart-title">비교 대상 다수가 함께 쓰는 스킬 묶음</h3>
                 <p class="muted small">
-                    랭커 대부분이 1초 안에 같이 쓰는 스킬입니다. 칩의 숫자는 이 기록에서 묶음의 다른 스킬과 함께 쓴 횟수 / 전체 시전 수이고,
+                    비교 대상 대부분이 1초 안에 같이 쓰는 스킬입니다. 칩의 숫자는 이 기록에서 묶음의 다른 스킬과 함께 쓴 횟수 / 전체 시전 수이고,
                     <b class="negative">산호색</b>은 절반 넘게 따로 쓴 스킬입니다.
                 </p>
                 <div class="chip-group" th:each="group : ${st.groups()}">
-                    <span class="chip-caption" th:text="|랭커 ${#numbers.formatDecimal(group.minPairedRate() * 100, 1, 0)}%↑|">랭커 91%↑</span>
+                    <span class="chip-caption" th:text="|${#numbers.formatDecimal(group.minPairedRate() * 100, 1, 0)}%가 함께|">91%가 함께</span>
                     <span class="chip" th:each="m : ${group.members()}" th:classappend="${m.isSeparated()} ? 'off' : ''">
                         <span th:text="${m.skillName()}">스틱스</span>
                         <small th:text="|${m.myTogether()}/${m.myCasts()}|">0/3</small>
@@ -160,17 +199,17 @@
             <th:block th:unless="${#lists.isEmpty(st.burstOrder())}">
                 <h3 class="chart-title">극딜 순서</h3>
                 <p class="muted small">
-                    랭커 극딜 <span th:text="${st.burstCount()}">33</span>회에서 절반 이상 나온 스킬을 평균적인 순서대로 놓은 것이 표준 순서입니다.
+                    비교 대상 극딜 <span th:text="${st.burstCount()}">33</span>회에서 절반 이상 나온 스킬을 평균적인 순서대로 놓은 것이 표준 순서입니다.
                     <b class="gold">금색</b>은 한쪽 순서에만 그 자리에 있는 스킬(빠졌거나 순서가 다른 스킬)입니다.
                     1초 안에 매크로로 함께 나가는 스킬끼리의 앞뒤는 큰 의미가 없습니다.
                 </p>
                 <div class="order-row">
-                    <span class="order-label">랭커 표준</span>
+                    <span class="order-label">비교 대상 표준</span>
                     <div class="chip-row">
                         <th:block th:each="o : ${st.burstOrder()}">
                             <span class="chip numbered" th:if="${o.standard() != null}" th:classappend="${o.isMatch()} ? '' : 'diff'"
                                   th:text="${o.standard()}"
-                                  th:title="${o.standardAdoption() == null} ? '' : |랭커 극딜의 ${#numbers.formatDecimal(o.standardAdoption() * 100, 1, 0)}%에서 사용|">스킬</span>
+                                  th:title="${o.standardAdoption() == null} ? '' : |비교 대상 극딜의 ${#numbers.formatDecimal(o.standardAdoption() * 100, 1, 0)}%에서 사용|">스킬</span>
                         </th:block>
                     </div>
                 </div>
@@ -194,9 +233,9 @@
                             <th>스킬</th>
                             <th class="right">채택률</th>
                             <th class="right">분당 시전<br><span class="muted small">나</span></th>
-                            <th class="right">분당 시전<br><span class="muted small">랭커 25 / 50 / 75%</span></th>
+                            <th class="right">분당 시전<br><span class="muted small">비교 대상 25 / 50 / 75%</span></th>
                             <th class="right">초 환산<br><span class="muted small">나</span></th>
-                            <th class="right">초 환산<br><span class="muted small">랭커 25 / 50 / 75%</span></th>
+                            <th class="right">초 환산<br><span class="muted small">비교 대상 25 / 50 / 75%</span></th>
                         </tr>
                         </thead>
                         <tbody>
@@ -222,14 +261,13 @@
         </th:block>
     </section>
 
-    <section id="cooldown" class="panel" th:with="c=${cooldowns}, s=${cooldowns.stats()}">
+    <section id="cooldown" class="panel" th:with="c=${cooldowns}">
         <h2 data-label="Cooldown Usage">쿨 대비 실제 사용 간격</h2>
         <p class="muted small">
             스킬마다 실제 사용 간격(중앙값)이 실효 쿨의 몇 배였는지입니다. <b>1.0배</b>면 쿨마다 쓴 것이고, 2.0배면 절반만 쓴 것입니다.
             <b class="accent">청록</b> 1.15배 이하, <b class="gold">금색</b> 1.5배 이하, <b class="negative">산호</b> 그보다 깁니다.
             <b class="muted">회색</b>은 쿨이 짧거나(15초 미만) 전투 중에 쿨이 바뀌어 판단하지 않는 스킬입니다.
-            <br>
-            <span th:text="|쿨감 ${@koreanNumberFormat.plain(s.reductionSeconds())}초 · ${@koreanNumberFormat.plain(s.reductionPercent())}% · 미적용 ${@koreanNumberFormat.plain(s.resetChancePercent())}% · 버프 지속시간 +${@koreanNumberFormat.plain(s.buffDurationPercent())}%|">쿨감</span>
+            실효 쿨은 맨 위 쿨타임 감소 수치로 계산합니다.
             <span id="cooldown-summary"></span>
         </p>
         <div id="cooldown-chart" class="chart"></div>

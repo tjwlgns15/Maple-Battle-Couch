@@ -13,6 +13,7 @@ import com.battlecoach.diagnosis.domain.DiagnosisEngine;
 import com.battlecoach.diagnosis.domain.SkillUsage;
 import com.battlecoach.diagnosis.sequence.BurstOrderExtractor;
 import com.battlecoach.diagnosis.sequence.SequenceAligner;
+import com.battlecoach.replay.application.dto.CooldownStatsView;
 import com.battlecoach.replay.application.dto.ReplayComparison;
 import com.battlecoach.replay.application.dto.ReplayComparison.SkillRow;
 import com.battlecoach.replay.application.dto.ReplayDetail;
@@ -50,11 +51,17 @@ public class ReplayComparisonService {
                 diagnosisEngine.diagnose(compared),
                 skills,
                 SpecComparison.from(skills),
+                cooldownView(baseContext),
+                cooldownView(targetContext),
                 sequenceAligner.align(
                         burstOrderExtractor.firstBurstOrder(baseContext),
                         burstOrderExtractor.firstBurstOrder(targetContext)),
                 baseContext.bursts(),
                 targetContext.bursts());
+    }
+
+    private static CooldownStatsView cooldownView(AnalysisContext context) {
+        return CooldownStatsView.of(context.cooldownStats(), context.spec().cooldownSources());
     }
 
     /**

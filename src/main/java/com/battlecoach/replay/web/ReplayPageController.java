@@ -9,11 +9,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.battlecoach.diagnosis.statistics.ComparisonBasis;
+import com.battlecoach.diagnosis.statistics.ComparisonCriteria;
 import com.battlecoach.replay.application.CharacterReplayService;
 import com.battlecoach.replay.application.ReplayAnalysisService;
 import com.battlecoach.replay.application.ReplayQueryService;
 import com.battlecoach.replay.application.dto.CooldownReport;
-import com.battlecoach.replay.application.dto.RankerStanding;
+import com.battlecoach.replay.application.dto.ComparisonStanding;
 import com.battlecoach.replay.application.dto.SkillIdleView;
 import com.battlecoach.replay.application.dto.ReplayAnalysis;
 import com.battlecoach.replay.application.dto.ReplayDetail;
@@ -51,24 +53,35 @@ public class ReplayPageController {
         return "character-replays";
     }
 
+    /**
+     * @param basis 비교 대상 순위 기준 (DPS, EFFICIENCY)
+     * @param top   비교 대상으로 삼을 상위 % (10, 25, 50, 100)
+     */
     @GetMapping("/replays/{replayId}")
-    public String replay(@PathVariable String replayId, Model model) {
+    public String replay(@PathVariable String replayId,
+                         @RequestParam(required = false) String basis,
+                         @RequestParam(required = false) Integer top,
+                         Model model) {
         ReplayDetail replay = replayQueryService.getReplay(ReplayId.of(replayId));
-        ReplayAnalysis analysis = replayAnalysisService.analyze(replay);
+        ComparisonCriteria criteria = ComparisonCriteria.parse(basis, top);
+        ReplayAnalysis analysis = replayAnalysisService.analyze(replay, criteria);
         model.addAttribute("replay", replay);
+        model.addAttribute("criteria", criteria);
+        model.addAttribute("basisOptions", ComparisonBasis.values());
+        model.addAttribute("percentOptions", ComparisonCriteria.PERCENT_OPTIONS);
         model.addAttribute("diagnosis", analysis.diagnosis());
         model.addAttribute("cooldowns", analysis.cooldowns());
-        model.addAttribute("standing", analysis.rankerStanding());
+        model.addAttribute("standing", analysis.comparisonStanding());
         model.addAttribute("idleSpans", analysis.idleSpans());
         model.addAttribute("replayJson", scriptJsonWriter.write(replay));
         model.addAttribute("burstJson", scriptJsonWriter.write(analysis.bursts()));
         model.addAttribute("analysisJson", scriptJsonWriter.write(new AnalysisChartData(
-                analysis.rankerStanding().rows(), analysis.cooldowns().rows(), analysis.idleSpans())));
+                analysis.comparisonStanding().rows(), analysis.cooldowns().rows(), analysis.idleSpans())));
         return "replay-detail";
     }
 
-    /** 상세 화면 분석 차트(랭커 분포 위치, 쿨 대비 사용 간격, 타임라인 쉰 구간)에 필요한 데이터 */
-    public record AnalysisChartData(List<RankerStanding.Row> standing, List<CooldownReport.Row> cooldowns,
+    /** 상세 화면 분석 차트(비교 대상 분포 위치, 쿨 대비 사용 간격, 타임라인 쉰 구간)에 필요한 데이터 */
+    public record AnalysisChartData(List<ComparisonStanding.Row> standing, List<CooldownReport.Row> cooldowns,
                                     List<SkillIdleView> idle) {
     }
 }

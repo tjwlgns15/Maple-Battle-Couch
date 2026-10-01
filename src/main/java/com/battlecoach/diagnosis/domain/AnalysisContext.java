@@ -9,10 +9,10 @@ import com.battlecoach.spec.domain.CooldownStats;
 
 /**
  * 진단 규칙이 보는 입력. 단일 진단은 기록 하나와 그 캐릭터의 스펙으로 만들고,
- * 비교 진단은 기준 기록({@code reference}), 통계 진단은 랭커 통계({@code statistics})를 더해 같은 엔진에 넣는다.
+ * 비교 진단은 기준 기록({@code reference}), 통계 진단은 비교 대상 통계({@code statistics})를 더해 같은 엔진에 넣는다.
  *
  * @param reference  비교 기준 기록. 없으면 null
- * @param statistics 같은 직업·기간 랭커 통계. 없으면 null
+ * @param statistics 같은 직업·기간 비교 대상 통계. 없으면 null
  */
 public record AnalysisContext(
         long playTimeMs,

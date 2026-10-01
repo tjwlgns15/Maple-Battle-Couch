@@ -59,7 +59,7 @@ class EfficiencyModelFitterTest {
     }
 
     @Test
-    void 랭커_스펙_범위_밖은_외삽하지_않는다() {
+    void 적합한_기록들의_스펙_범위_밖은_외삽하지_않는다() {
         List<AnalysisContext> samples = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
             long power = 400_000_000L + i * 50_000_000L;
@@ -67,9 +67,9 @@ class EfficiencyModelFitterTest {
         }
         EfficiencyModel model = fitter.fit(samples).orElseThrow();
 
-        // 헥사 합이 랭커 최소(300)보다 낮다
+        // 헥사 합이 표본 최소(300)보다 낮다
         assertThat(model.efficiencyOf(sample(450_000_000L * 10_000, 450_000_000L, 137))).isEmpty();
-        // 전투력이 랭커 최소(4억)보다 낮다
+        // 전투력이 표본 최소(4억)보다 낮다
         assertThat(model.efficiencyOf(sample(300_000_000L * 10_000, 300_000_000L, 340))).isEmpty();
         assertThat(model.efficiencyOf(sample(450_000_000L * 10_000, 450_000_000L, 340))).isPresent();
     }

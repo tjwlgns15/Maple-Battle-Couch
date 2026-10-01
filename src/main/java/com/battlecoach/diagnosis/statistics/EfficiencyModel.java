@@ -6,13 +6,13 @@ import com.battlecoach.diagnosis.domain.AnalysisContext;
 import com.battlecoach.spec.domain.PowerStats;
 
 /**
- * 같은 직업·기간 랭커 표본으로 적합한 "스펙으로 예상되는 DPS" 추세선.
+ * 같은 직업·기간으로 저장된 기록(비교 풀) 전체로 적합한 "스펙으로 예상되는 DPS" 추세선.
  * log(DPS) = intercept + combatPowerSlope × log(전투력) [+ hexaSlope × 헥사 코어 레벨 합]
  * <p>
  * 운용 효율은 실제 DPS 가 추세선보다 몇 % 높은지다. 전투력에는 헥사·5차 스킬 레벨이 빠져 있어 헥사 항을 더하지만,
  * 표본이 적으면 헥사 계수가 불안정해 전투력만 쓴다. 남는 차이에는 운용 말고도 미적용 발동 같은 운과 기록마다의 편차가 섞여 있다.
  * <p>
- * 랭커 스펙 범위 밖으로는 외삽하지 않는다. 칼리 랭커는 헥사 합이 263~420 이라 헥사 계수가 1레벨당 +0.06%로 작게 나오는데,
+ * 적합한 기록들의 스펙 범위 밖으로는 외삽하지 않는다. 칼리 랭커는 헥사 합이 263~420 이라 헥사 계수가 1레벨당 +0.06%로 작게 나오는데,
  * 헥사 합 137 인 기록에 적용하면 헥사 부족분이 거의 설명되지 않아 −22% 가 나왔다.
  *
  * @param hexaSlope     헥사 코어 레벨 1당 log(DPS) 증가. 헥사 항을 쓰지 않으면 null
@@ -66,7 +66,16 @@ public record EfficiencyModel(
         return Optional.of(Math.exp(Math.log(totalDps) - predicted) - 1);
     }
 
-    /** @return 추세 대비 비율. 스펙을 모르거나 랭커 스펙 범위 밖이면 비어 있다 */
+    /**
+     * 추세선을 적합한 풀 안의 기록에 쓴다. 풀 안이라 범위 검사를 하지 않는다(비교 대상 순위 매기기, 기록 목록).
+     *
+     * @return 추세 대비 비율. 전투력이나 (헥사 항을 쓰면) 헥사 레벨을 모르면 비어 있다
+     */
+    public Optional<Double> sampleEfficiencyOf(AnalysisContext context) {
+        return rawEfficiencyOf(context.totalDps(), context.spec().powerStats());
+    }
+
+    /** @return 추세 대비 비율. 스펙을 모르거나 적합한 기록들의 스펙 범위 밖이면 비어 있다 */
     public Optional<Double> efficiencyOf(AnalysisContext context) {
         PowerStats power = context.spec().powerStats();
         if (!covers(power)) {

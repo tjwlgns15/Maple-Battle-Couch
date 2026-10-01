@@ -11,27 +11,28 @@ import com.battlecoach.diagnosis.domain.SkillUsage;
 import com.battlecoach.diagnosis.sequence.BurstOrderExtractor;
 import com.battlecoach.diagnosis.sequence.SequenceAligner;
 import com.battlecoach.diagnosis.statistics.BurstOrderStatistics;
+import com.battlecoach.diagnosis.statistics.ComparisonCriteria;
 import com.battlecoach.diagnosis.statistics.EfficiencyModel;
 import com.battlecoach.diagnosis.statistics.JobStatistics;
 import com.battlecoach.diagnosis.statistics.JobStatisticsCalculator;
 import com.battlecoach.diagnosis.statistics.SkillDistribution;
 import com.battlecoach.diagnosis.statistics.SkillDistribution.SecondsBasis;
-import com.battlecoach.replay.application.dto.RankerStanding;
-import com.battlecoach.replay.application.dto.RankerStanding.Efficiency;
-import com.battlecoach.replay.application.dto.RankerStanding.GroupRow;
-import com.battlecoach.replay.application.dto.RankerStanding.Member;
-import com.battlecoach.replay.application.dto.RankerStanding.OrderRow;
-import com.battlecoach.replay.application.dto.RankerStanding.Row;
+import com.battlecoach.replay.application.dto.ComparisonStanding;
+import com.battlecoach.replay.application.dto.ComparisonStanding.Efficiency;
+import com.battlecoach.replay.application.dto.ComparisonStanding.GroupRow;
+import com.battlecoach.replay.application.dto.ComparisonStanding.Member;
+import com.battlecoach.replay.application.dto.ComparisonStanding.OrderRow;
+import com.battlecoach.replay.application.dto.ComparisonStanding.Row;
 import com.battlecoach.spec.domain.SkillLevel;
 
 import lombok.RequiredArgsConstructor;
 
-/** 내 기록의 스킬별 값을 랭커 분포 옆에 놓는다. */
+/** 내 기록의 스킬별 값을 비교 대상 분포 옆에 놓는다. */
 @Component
 @RequiredArgsConstructor
-class RankerStandingAssembler {
+class ComparisonStandingAssembler {
 
-    /** 랭커 절반 이상이 쓰는 스킬은 내가 안 썼어도 표에 넣는다. */
+    /** 비교 대상 절반 이상이 쓰는 스킬은 내가 안 썼어도 표에 넣는다. */
     private static final double SHOW_UNUSED_ADOPTION = 0.5;
 
     private static final Comparator<Row> ORDER = Comparator
@@ -42,13 +43,14 @@ class RankerStandingAssembler {
     private final BurstOrderExtractor burstOrderExtractor;
     private final SequenceAligner sequenceAligner;
 
-    RankerStanding assemble(AnalysisContext context, int periodNo, JobStatistics statistics) {
+    ComparisonStanding assemble(AnalysisContext context, int periodNo, ComparisonCriteria criteria, int poolSize,
+                            JobStatistics statistics) {
         List<Row> rows = statistics.skills().values().stream()
                 .map(distribution -> toRow(context, distribution))
                 .flatMap(Optional::stream)
                 .sorted(ORDER)
                 .toList();
-        return new RankerStanding(periodNo, statistics.sampleCount(), statistics.isReliable(), null,
+        return new ComparisonStanding(periodNo, criteria, poolSize, statistics.sampleCount(), statistics.isReliable(), null,
                 rows, groupRows(context, statistics), statistics.burstOrder().burstCount(),
                 burstOrderRows(context, statistics.burstOrder()),
                 statistics.efficiencyModel().map(model -> efficiency(context, model)).orElse(null));
@@ -60,7 +62,7 @@ class RankerStandingAssembler {
                 context.spec().powerStats(), model.minPower(), model.maxPower());
     }
 
-    /** 내 첫 극딜 순서를 랭커 표준 순서(극딜 절반 이상에서 쓰는 스킬, 상대 위치 중앙값 순)에 맞춘다. */
+    /** 내 첫 극딜 순서를 비교 대상 표준 순서(극딜 절반 이상에서 쓰는 스킬, 상대 위치 중앙값 순)에 맞춘다. */
     private List<OrderRow> burstOrderRows(AnalysisContext context, BurstOrderStatistics burstOrder) {
         List<String> standard = burstOrder.standardOrder().stream().map(BurstOrderStatistics.Entry::baseName).toList();
         if (standard.isEmpty()) {

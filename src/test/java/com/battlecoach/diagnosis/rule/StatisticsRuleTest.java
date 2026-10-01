@@ -31,17 +31,17 @@ class StatisticsRuleTest {
     private final LinkedPairRule linkedPairRule = new LinkedPairRule();
 
     @Test
-    void 분당_시전_수가_랭커_하위_25퍼센트보다_낮으면_중앙값까지_모자란_시전으로_영향도를_낸다() {
-        // 5분에 스틱스 3회(0.6회/분), 랭커 중앙값 1.2회/분 → 6회까지 3회 모자람, 1회 1초
+    void 분당_시전_수가_비교_대상_하위_25퍼센트보다_낮으면_중앙값까지_모자란_시전으로_영향도를_낸다() {
+        // 5분에 스틱스 3회(0.6회/분), 비교 대상 중앙값 1.2회/분 → 6회까지 3회 모자람, 1회 1초
         AnalysisContext context = context(skill("스틱스", 52_000L, 3_000L, 0, 110_000, 220_000))
                 .withStatistics(statistics(8, distribution("스틱스", 8, 1.1, 1.2, 1.3), List.of()));
 
         List<Finding> findings = castRateRule.evaluate(context);
 
         assertThat(findings).singleElement().satisfies(finding -> {
-            assertThat(finding.type()).isEqualTo(FindingType.CAST_RATE_BELOW_RANKERS);
+            assertThat(finding.type()).isEqualTo(FindingType.CAST_RATE_BELOW_PEERS);
             assertThat(finding.impactSeconds()).isCloseTo(3.0, within(1e-9));
-            assertThat(finding.message()).contains("랭커 8명").contains("약 3회");
+            assertThat(finding.message()).contains("비교 대상 8명").contains("약 3회");
         });
     }
 
@@ -56,7 +56,7 @@ class StatisticsRuleTest {
     }
 
     @Test
-    void 랭커_다수가_함께_쓰는_쌍을_따로_쓰면_참고로_알리고_같은_쌍은_한_번만_낸다() {
+    void 비교_대상_다수가_함께_쓰는_쌍을_따로_쓰면_참고로_알리고_같은_쌍은_한_번만_낸다() {
         AnalysisContext context = context(
                 skill("스틱스", 52_000L, 3_000L, 60_000, 170_000, 280_000),
                 skill("레디 투 다이", 52_000L, null, 1_000, 55_000, 110_000, 165_000, 220_000, 275_000))
@@ -69,7 +69,7 @@ class StatisticsRuleTest {
         assertThat(findings).singleElement().satisfies(finding -> {
             assertThat(finding.type()).isEqualTo(FindingType.LINKED_PAIR_SEPARATED);
             assertThat(finding.isMeasured()).isFalse();
-            assertThat(finding.message()).contains("랭커 8명 중 100%").contains("0/3회");
+            assertThat(finding.message()).contains("비교 대상 8명 중 100%").contains("0/3회");
         });
     }
 

@@ -13,7 +13,7 @@ import com.battlecoach.diagnosis.sequence.BurstOrderExtractor.BurstCast;
 
 import lombok.RequiredArgsConstructor;
 
-/** 랭커 표본의 모든 극딜 구간에서 순서 통계를 만든다. */
+/** 비교 대상 표본의 모든 극딜 구간에서 순서 통계를 만든다. */
 @Component
 @RequiredArgsConstructor
 public class BurstOrderStatisticsCalculator {

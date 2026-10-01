@@ -31,8 +31,7 @@ public class CharacterReplayService {
         return items;
     }
 
-    /** ocid 를 이미 알 때(랭커 수집) 쓴다. 캐시하지 않으며 기간 정보 저장은 호출자가 한다. */
-    public List<ReplayListItem> findByOcid(String ocid) {
+    private List<ReplayListItem> findByOcid(String ocid) {
         return nexonApiClient.findReplayIds(ocid).entries().stream()
                 .map(entry -> ReplayListItem.of(
                         entry.periodNo(),

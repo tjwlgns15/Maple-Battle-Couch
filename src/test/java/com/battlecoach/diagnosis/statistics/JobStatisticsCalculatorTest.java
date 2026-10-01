@@ -19,7 +19,7 @@ class JobStatisticsCalculatorTest {
     private static final CharacterSpec SPEC = CharacterSpec.of(CooldownStats.of(0, 0, 27, 0), List.of());
 
     private final JobStatisticsCalculator calculator =
-            new JobStatisticsCalculator(new BurstOrderStatisticsCalculator(new BurstOrderExtractor()), new EfficiencyModelFitter());
+            new JobStatisticsCalculator(new BurstOrderStatisticsCalculator(new BurstOrderExtractor()));
 
     @Test
     void 분위수는_선형_보간한다() {
@@ -40,7 +40,7 @@ class JobStatisticsCalculatorTest {
         }
         samples.add(sample(skill("데스 블로섬", 52_000L, 1_000L, 0)));
 
-        JobStatistics statistics = calculator.calculate("칼리", 4, samples);
+        JobStatistics statistics = calculator.calculate("칼리", 4, samples, null);
 
         SkillDistribution pandemonium = statistics.skill("판데모니움").orElseThrow();
         assertThat(statistics.sampleCount()).isEqualTo(5);
@@ -63,7 +63,7 @@ class JobStatisticsCalculatorTest {
                 skill("레디 투 다이", 52_000L, null, 30_000, 90_000, 150_000),
                 skill("판데모니움", 24_000L, 1_000L, 10_000, 40_000, 90_000)));
 
-        JobStatistics statistics = calculator.calculate("칼리", 4, samples);
+        JobStatistics statistics = calculator.calculate("칼리", 4, samples, null);
 
         PairStatistic pair = statistics.bestPairFor("스틱스").orElseThrow();
         assertThat(pair.partnerBaseName()).isEqualTo("레디 투 다이");

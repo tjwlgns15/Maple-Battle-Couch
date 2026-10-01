@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 직업·기간별 랭커 표본 통계. 레벨 랭킹에서 모은 표본이라 "잘 치는 사람"의 통계라는 보장은 없다.
+ * 직업·기간별 비교 대상 통계. 저장된 기록(검색·수집) 중 비교 조건(DPS 또는 전투력 대비 DPS 상위 N%)으로 고른 표본으로 계산한다.
  *
  * @param pairs      표본 다수가 함께 쓰는 스킬 쌍만 담는다
  * @param burstOrder 모든 극딜 구간의 스킬 순서 통계

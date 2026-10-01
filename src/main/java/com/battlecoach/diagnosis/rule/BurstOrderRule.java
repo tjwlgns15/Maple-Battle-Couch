@@ -23,7 +23,7 @@ import com.battlecoach.diagnosis.statistics.JobStatistics;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 통계 진단: 랭커 대부분이 "A 다음 B"로 쓰는데 이 기록은 극딜 절반 이상에서 B 를 먼저 쓴 경우.
+ * 통계 진단: 비교 대상 대부분이 "A 다음 B"로 쓰는데 이 기록은 극딜 절반 이상에서 B 를 먼저 쓴 경우.
  * 예: 칼리 랭커 극딜 29회 모두 스틱스를 보이드 버스트보다 먼저 썼다(칼리 B는 반대).
  * 순서가 데미지에 주는 영향은 추정할 근거가 없어 참고로만 낸다. 한 스킬에 어긋난 쌍이 여럿이면 합의율이 가장 높은 쌍만 낸다.
  */
@@ -90,7 +90,7 @@ public class BurstOrderRule implements DiagnosisRule {
         Optional<SkillUsage> skill = context.find(precedence.before());
         String afterName = context.find(precedence.after()).map(SkillUsage::skillName).orElse(precedence.after());
         return skill.map(s -> Finding.unmeasured(FindingType.BURST_ORDER_REVERSED, s, String.format(Locale.ROOT,
-                "랭커 극딜 %d회 중 %.0f%%가 이 스킬을 %s보다 먼저 썼습니다. 이 기록은 %d번 중 %d번 %s 뒤에 썼습니다.",
+                "비교 대상 극딜 %d회 중 %.0f%%가 이 스킬을 %s보다 먼저 썼습니다. 이 기록은 %d번 중 %d번 %s 뒤에 썼습니다.",
                 precedence.orderedCount(), precedence.rate() * 100, afterName,
                 violation.ordered(), violation.reversed(), afterName))
                 .withAdvice(String.format(Locale.ROOT,

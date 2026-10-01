@@ -8,8 +8,9 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** 연무장 입장 시점의 쿨타임 스탯, 스펙 크기, 스킬 스펙. 리플레이마다 고정이라 캐시해도 된다. */
-public record CharacterSpec(CooldownStats cooldownStats, PowerStats powerStats, Map<String, SkillSpec> skillsByBaseName) {
+/** 연무장 입장 시점의 쿨타임 스탯(과 그 출처), 스펙 크기, 스킬 스펙. 리플레이마다 고정이라 캐시해도 된다. */
+public record CharacterSpec(CooldownStats cooldownStats, CooldownSources cooldownSources, PowerStats powerStats,
+                            Map<String, SkillSpec> skillsByBaseName) {
 
     /** 강화 코어 항목의 접미사 ("헥스 : 판데모니움 강화") */
     static final String ENHANCEMENT_SUFFIX = " 강화";
@@ -24,6 +25,7 @@ public record CharacterSpec(CooldownStats cooldownStats, PowerStats powerStats, 
             .thenComparingInt(SkillSpec::level);
 
     public CharacterSpec {
+        cooldownSources = cooldownSources == null ? CooldownSources.none() : cooldownSources;
         powerStats = powerStats == null ? PowerStats.unknown() : powerStats;
         skillsByBaseName = Map.copyOf(skillsByBaseName);
     }
@@ -33,12 +35,17 @@ public record CharacterSpec(CooldownStats cooldownStats, PowerStats powerStats, 
     }
 
     public static CharacterSpec of(CooldownStats cooldownStats, PowerStats powerStats, List<SkillSpec> skills) {
+        return of(cooldownStats, CooldownSources.none(), powerStats, skills);
+    }
+
+    public static CharacterSpec of(CooldownStats cooldownStats, CooldownSources cooldownSources, PowerStats powerStats,
+                                   List<SkillSpec> skills) {
         Map<String, SkillSpec> byBaseName = skills.stream()
                 .collect(Collectors.toMap(
                         SkillSpec::baseName,
                         Function.identity(),
                         BinaryOperator.maxBy(PREFERENCE)));
-        return new CharacterSpec(cooldownStats, powerStats, byBaseName);
+        return new CharacterSpec(cooldownStats, cooldownSources, powerStats, byBaseName);
     }
 
     public Optional<SkillSpec> find(String baseName) {

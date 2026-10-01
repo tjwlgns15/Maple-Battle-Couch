@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.util.function.Function;
 
 import org.springframework.http.HttpRequest;
@@ -19,7 +18,6 @@ import com.battlecoach.nexon.dto.CharacterBasicResponse;
 import com.battlecoach.nexon.dto.CharacterInfoBasicResponse;
 import com.battlecoach.nexon.dto.NexonErrorResponse;
 import com.battlecoach.nexon.dto.OcidResponse;
-import com.battlecoach.nexon.dto.OverallRankingResponse;
 import com.battlecoach.nexon.dto.RawResponse;
 import com.battlecoach.nexon.dto.ReplayIdListResponse;
 import com.battlecoach.nexon.dto.SkillTimelineResponse;
@@ -98,15 +96,6 @@ public class RestClientNexonApiClient implements NexonApiClient {
         return RawResponse.of(parse(json, CharacterInfoBasicResponse.class), json);
     }
 
-    @Override
-    public OverallRankingResponse findOverallRanking(LocalDate date, String jobClass, int page) {
-        String json = get(uri -> uri.path("/maplestory/v1/ranking/overall")
-                .queryParam("date", date.toString())
-                .queryParam("class", jobClass)
-                .queryParam("page", page)
-                .build());
-        return parse(json, OverallRankingResponse.class);
-    }
 
     private String get(Function<UriBuilder, URI> uriFunction) {
         for (int attempt = 1; ; attempt++) {

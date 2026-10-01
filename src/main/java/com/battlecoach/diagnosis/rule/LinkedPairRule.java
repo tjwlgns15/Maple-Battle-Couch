@@ -19,8 +19,8 @@ import com.battlecoach.diagnosis.statistics.JobStatisticsCalculator;
 import com.battlecoach.diagnosis.statistics.PairStatistic;
 
 /**
- * 통계 진단: 랭커 대부분이 함께 쓰는 스킬 쌍(예: 스틱스 + 레디 투 다이)을 따로 쓴 경우.
- * 기록 하나로는 어떤 스킬이 짝인지 알 수 없어 랭커 통계로 판단한다.
+ * 통계 진단: 비교 대상 대부분이 함께 쓰는 스킬 쌍(예: 스틱스 + 레디 투 다이)을 따로 쓴 경우.
+ * 기록 하나로는 어떤 스킬이 짝인지 알 수 없어 비교 대상 통계로 판단한다.
  * 데미지로 환산할 근거가 없어 영향도 없이 참고로 낸다. 시전 수가 부족해서 짝을 못 맞췄다면 그 손해는 다른 규칙이 잰다.
  */
 @Component
@@ -52,7 +52,7 @@ public class LinkedPairRule implements DiagnosisRule {
                 continue;
             }
             findings.add(Finding.unmeasured(FindingType.LINKED_PAIR_SEPARATED, skill, String.format(Locale.ROOT,
-                    "두 스킬을 모두 쓴 랭커 %d명 중 %.0f%%가 이 스킬을 %s %.0f초 안에 함께 씁니다. 이 기록은 %d/%d회입니다.",
+                    "두 스킬을 모두 쓴 비교 대상 %d명 중 %.0f%%가 이 스킬을 %s %.0f초 안에 함께 씁니다. 이 기록은 %d/%d회입니다.",
                     pair.get().bothUsedCount(), pair.get().pairedRate() * 100, KoreanJosa.withAnd(partner.get().skillName()),
                     JobStatisticsCalculator.PAIR_WINDOW_MS / 1000.0, paired, skill.castCount()))
                     .withAdvice(String.format(Locale.ROOT,

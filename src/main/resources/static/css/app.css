@@ -201,6 +201,23 @@ h2[data-label]::before {
     box-shadow: 0 0 10px 2px rgba(79, 214, 255, 0.55);
 }
 
+.site-nav {
+    display: flex;
+    gap: 14px;
+    margin-right: auto;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.site-nav a {
+    color: var(--muted);
+}
+
+.site-nav a:hover {
+    color: var(--accent);
+    text-decoration: none;
+}
+
 /* ---------- 입력과 버튼 ---------- */
 .search-inline {
     display: flex;
@@ -412,6 +429,56 @@ a:focus-visible {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
+}
+
+/* 쿨감·버프 지속시간: 상단 수치 카드 아래 한 줄. 값 아래에 출처를 작게 둔다. */
+.spec-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: -6px 0 18px;
+}
+
+.spec-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: var(--radius);
+}
+
+.spec-stat .label {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.spec-stat .value {
+    color: var(--gold);
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.spec-stat .source,
+.spec-stat-table .source {
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.spec-stat-table .source {
+    display: block;
+}
+
+.table.compact.spec-stat-table td {
+    white-space: normal;
+}
+
+.spec-stat-table strong {
+    font-variant-numeric: tabular-nums;
 }
 
 /* ---------- 표 ---------- */
@@ -762,6 +829,59 @@ main section[id] {
     background: linear-gradient(180deg, #8fe6ff, var(--accent));
 }
 
+/* 탭을 링크로 쓸 때 (서버에서 다시 그리는 정렬·필터) */
+.tabs a.tab:hover {
+    text-decoration: none;
+}
+
+/* ---------- 필터 알약: 기록 모음의 기간·직업, 비교 대상 대비의 비교 조건 ---------- */
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.filter-label {
+    min-width: 40px;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    color: var(--text);
+    font-size: 0.86rem;
+    background: var(--surface-strong);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+
+.pill small {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.pill:hover {
+    text-decoration: none;
+    border-color: var(--accent);
+}
+
+.pill.active {
+    color: var(--on-bright);
+    font-weight: 700;
+    background: linear-gradient(180deg, #8fe6ff, var(--accent));
+    border-color: transparent;
+}
+
+.pill.active small {
+    color: var(--on-bright);
+}
+
 /* ---------- 칩: 스킬 묶음, 극딜 순서 ---------- */
 .chip-group {
     display: flex;
@@ -922,7 +1042,17 @@ main section[id] {
     color: var(--muted);
 }
 
-/* ---------- 랭커 묶음 ---------- */
+.explain-list {
+    margin: 4px 0 8px;
+    padding-left: 18px;
+    line-height: 1.6;
+}
+
+.explain-list li + li {
+    margin-top: 4px;
+}
+
+/* ---------- 비교 대상 묶음 ---------- */
 .pair-list {
     margin: 8px 0 0;
     padding-left: 18px;
@@ -946,6 +1076,11 @@ main section[id] {
 
     .search-inline input {
         width: 120px;
+    }
+
+    .site-header {
+        flex-wrap: wrap;
+        gap: 8px 12px;
     }
 
     .versus {

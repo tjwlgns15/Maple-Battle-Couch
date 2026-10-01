@@ -49,10 +49,4 @@ public class ReplayPeriodRecorder {
                 .orElse(OptionalInt.empty());
     }
 
-    @Transactional(readOnly = true)
-    public OptionalInt latestPeriod() {
-        return replayPeriodRepository.findLatestPeriodNo()
-                .map(OptionalInt::of)
-                .orElse(OptionalInt.empty());
-    }
 }

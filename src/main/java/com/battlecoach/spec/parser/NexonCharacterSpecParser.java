@@ -37,6 +37,7 @@ public class NexonCharacterSpecParser implements CharacterSpecParser {
         Map<String, String> finalStats = byName(finalStats(response));
         return CharacterSpec.of(
                 toCooldownStats(finalStats),
+                CooldownSourceExtractor.extract(response),
                 PowerStats.of(Math.round(number(finalStats.get(COMBAT_POWER))), hexaLevelSum(response)),
                 toSkillSpecs(skills(response)));
     }

@@ -506,8 +506,10 @@
     /**
      * 딜 비중(초 환산) 차이의 원인. 차이를 시전 수 효과와 1회 효율 효과로 나눠 쌓은 가로 막대로 그린다.
      * 한쪽에 시전 기록이 없는 스킬(패시브·연동, 한쪽만 쓴 스킬)은 나눌 수 없어 차이 전체를 회색 막대 하나로 둔다. 차이가 큰 스킬부터 보여준다.
+     * 툴팁에는 시전 수와 1회 몫을 실제 숫자로 보여줘 두 효과가 어디서 왔는지 따라갈 수 있게 한다.
+     * @param playTimeScale 기준 기록의 시전 수를 내 전투 시간에 맞춘 배율
      */
-    function renderShareGapChart(el, skills) {
+    function renderShareGapChart(el, skills, playTimeScale) {
         const MAX_ROWS = 12;
         const rows = skills
             .map((s) => {
@@ -516,6 +518,10 @@
                 return {
                     name: s.skillName,
                     total,
+                    myCasts: s.baseCasts,
+                    refCasts: s.targetCasts * playTimeScale,
+                    myPerCast: s.basePerCastSeconds,
+                    refPerCast: s.targetPerCastSeconds,
                     cast: decomposable ? s.castEffectSeconds : 0,
                     efficiency: decomposable ? s.efficiencyEffectSeconds : 0,
                     passive: decomposable ? 0 : total,
@@ -551,11 +557,13 @@
                 formatter: (params) => {
                     const r = params[0].data.row;
                     const sign = (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}초`;
-                    const lines = [`<b>${escapeHtml(r.name)}</b>`, `차이 ${sign(r.total)}`];
+                    const lines = [`<b>${escapeHtml(r.name)}</b>`, `딜 몫 차이 ${sign(r.total)} (기준 기록 대비)`];
                     if (r.passive !== 0) {
                         lines.push('한쪽에 시전 기록이 없어(패시브·연동 스킬이나 한쪽만 쓴 스킬) 원인을 나눌 수 없음');
                     } else {
-                        lines.push(`시전 수 효과 ${sign(r.cast)}`, `1회 효율 효과 ${sign(r.efficiency)}`);
+                        lines.push(
+                            `시전 수 효과 ${sign(r.cast)} ← 나 ${r.myCasts}회 vs 기준 ${r.refCasts.toFixed(1)}회`,
+                            `1회 효율 효과 ${sign(r.efficiency)} ← 1회에 나 ${r.myPerCast.toFixed(2)}초 vs 기준 ${r.refPerCast.toFixed(2)}초`);
                     }
                     return lines.join('<br>');
                 },
@@ -576,16 +584,16 @@
     }
 
     /**
-     * 랭커 분포 속 내 위치. 스킬마다 랭커 25~75% 띠, 중앙값 세로선, 내 값 점을 그린다.
-     * 스킬마다 눈금이 달라 랭커 중앙값을 100%로 맞춘다. 내 값이 하위 25%보다 낮은 스킬이 위에 온다.
-     * @param rows   RankerStanding.Row 목록
+     * 비교 대상 분포 속 내 위치. 스킬마다 비교 대상 25~75% 띠, 중앙값 세로선, 내 값 점을 그린다.
+     * 스킬마다 눈금이 달라 비교 대상 중앙값을 100%로 맞춘다. 내 값이 하위 25%보다 낮은 스킬이 위에 온다.
+     * @param rows   ComparisonStanding.Row 목록
      * @param metric 'rate'(분당 시전 수) 또는 'seconds'(초 환산)
      * @return { chart, setMetric(metric) }
      */
-    function renderRankerDistribution(el, rows, metric) {
+    function renderPeerDistribution(el, rows, metric) {
         const chart = echarts.init(el, THEME);
         const setMetric = (m) => {
-            const option = rankerDistributionOption(rows, m);
+            const option = peerDistributionOption(rows, m);
             el.style.height = `${Math.max(option.rowCount, 1) * 30 + 60}px`;
             chart.resize();
             chart.setOption(option.option, true);
@@ -594,7 +602,7 @@
         return { chart, setMetric };
     }
 
-    function rankerDistributionOption(rows, metric) {
+    function peerDistributionOption(rows, metric) {
         const unit = metric === 'rate' ? '회/분' : '초';
         const digits = metric === 'rate' ? 2 : 1;
         const items = rows
@@ -612,8 +620,8 @@
                 let basis = null;
                 if (metric === 'seconds') {
                     basis = r.secondsLevelMatched
-                        ? `${r.myLevel}이 같은 랭커 ${r.secondsSampleCount}명과 비교`
-                        : `같은 레벨 랭커가 부족해 레벨 무관 ${r.secondsSampleCount}명과 비교${r.myLevel ? ` (내 스킬 ${r.myLevel})` : ''}`;
+                        ? `${r.myLevel}이 같은 비교 대상 ${r.secondsSampleCount}개와 비교`
+                        : `같은 레벨 비교 대상이 부족해 레벨 무관 ${r.secondsSampleCount}개와 비교${r.myLevel ? ` (내 스킬 ${r.myLevel})` : ''}`;
                 }
                 return {
                     name: unmatched ? `${r.skillName} *` : r.skillName,
@@ -643,8 +651,8 @@
                         const item = items[params[0].dataIndex];
                         const { q, mine } = item.raw;
                         const lines = [`<b>${escapeHtml(item.name)}</b>`,
-                            `내 값 ${fixed(mine)}${unit} (랭커 중앙값의 ${item.mine.toFixed(0)}%)`,
-                            `랭커 25 / 50 / 75%: ${fixed(q.p25)} / ${fixed(q.p50)} / ${fixed(q.p75)}${unit}`];
+                            `내 값 ${fixed(mine)}${unit} (비교 대상 중앙값의 ${item.mine.toFixed(0)}%)`,
+                            `비교 대상 25 / 50 / 75%: ${fixed(q.p25)} / ${fixed(q.p50)} / ${fixed(q.p75)}${unit}`];
                         if (item.basis) {
                             lines.push(escapeHtml(item.basis));
                         }
@@ -666,12 +674,12 @@
                         data: items.map((i) => clamp(i.p25)),
                     },
                     {
-                        name: '랭커 25~75%', type: 'bar', stack: 'band', barWidth: 12,
+                        name: '비교 대상 25~75%', type: 'bar', stack: 'band', barWidth: 12,
                         itemStyle: { color: color('--accent-weak'), borderColor: 'rgba(79, 214, 255, 0.45)', borderWidth: 1, borderRadius: 6 },
                         data: items.map((i) => Math.max(0.5, clamp(i.p75) - clamp(i.p25))),
                     },
                     {
-                        name: '랭커 중앙값', type: 'scatter', symbol: 'rect', symbolSize: [2, 18],
+                        name: '비교 대상 중앙값', type: 'scatter', symbol: 'rect', symbolSize: [2, 18],
                         itemStyle: { color: color('--text') },
                         data: items.map(() => 100),
                         z: 3,
@@ -838,6 +846,6 @@
 
     window.BattleCoachCharts = {
         renderShareChart, renderTimelineChart, renderComparisonTimeline, renderCastGapChart, renderShareGapChart,
-        renderRankerDistribution, renderCooldownUsage, attachIdleOverlay, resizeOnWindowChange, readJson,
+        renderPeerDistribution, renderCooldownUsage, attachIdleOverlay, resizeOnWindowChange, readJson,
     };
 })();
