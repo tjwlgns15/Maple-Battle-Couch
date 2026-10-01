@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.battlecoach.nexon.NexonApiException;
+import com.battlecoach.replay.application.CharacterNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,6 +20,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException e) {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of("INVALID_REQUEST", e.getMessage()));
+    }
+
+    @ExceptionHandler(CharacterNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCharacterNotFound(CharacterNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of("CHARACTER_NOT_FOUND", e.getMessage()));
     }
 
     /**

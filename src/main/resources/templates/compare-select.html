@@ -24,8 +24,8 @@
     <p class="muted small">같은 직업(<span th:text="${base.characterClass()}">칼리</span>)의 기록끼리만 비교할 수 있습니다.</p>
 
     <h2 class="finding-group" th:text="|${targetName}의 기록|">기록</h2>
-    <p th:if="${classMismatch}" class="empty negative" th:text="${classMismatch}">직업이 다릅니다.</p>
-    <p th:if="${classMismatch == null and #lists.isEmpty(candidates)}" class="empty">비교할 수 있는 기록이 없습니다.</p>
+    <p th:if="${notice}" class="empty negative" th:text="${notice}">직업이 다릅니다.</p>
+    <p th:if="${notice == null and #lists.isEmpty(candidates)}" class="empty">비교할 수 있는 기록이 없습니다. 연무장 기록을 등록하지 않은 캐릭터일 수 있습니다.</p>
     <table th:unless="${#lists.isEmpty(candidates)}" class="table">
         <thead>
         <tr>

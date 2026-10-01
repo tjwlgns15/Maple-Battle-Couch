@@ -514,7 +514,8 @@ a:focus-visible {
     background: rgba(79, 214, 255, 0.05);
 }
 
-.table th.right {
+.table th.right,
+.table td.right {
     text-align: right;
 }
 

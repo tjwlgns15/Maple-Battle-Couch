@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 
 import com.battlecoach.global.config.CacheNames;
 import com.battlecoach.nexon.NexonApiClient;
+import com.battlecoach.nexon.NexonApiException;
 import com.battlecoach.nexon.NexonDates;
+import com.battlecoach.nexon.dto.ReplayIdListResponse;
 import com.battlecoach.replay.application.dto.ReplayListItem;
 import com.battlecoach.replay.domain.CharacterName;
 
@@ -31,8 +33,21 @@ public class CharacterReplayService {
         return items;
     }
 
+    /**
+     * 연무장 기록이 하나도 없는 캐릭터는 빈 목록이 아니라 400 OPENAPI00004 가 온다(랭커 확인에서 반복 관찰).
+     * ocid 는 이미 찾았으므로 여기서의 4xx 는 기록 없음으로 본다.
+     */
     private List<ReplayListItem> findByOcid(String ocid) {
-        return nexonApiClient.findReplayIds(ocid).entries().stream()
+        ReplayIdListResponse response;
+        try {
+            response = nexonApiClient.findReplayIds(ocid);
+        } catch (NexonApiException e) {
+            if (e.isClientError()) {
+                return List.of();
+            }
+            throw e;
+        }
+        return response.entries().stream()
                 .map(entry -> ReplayListItem.of(
                         entry.periodNo(),
                         NexonDates.toKstDate(entry.registerDate()),

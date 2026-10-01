@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import com.battlecoach.global.config.CacheNames;
 import com.battlecoach.nexon.NexonApiClient;
+import com.battlecoach.nexon.NexonApiException;
 import com.battlecoach.replay.domain.CharacterName;
 
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,20 @@ public class OcidResolver {
 
     private final NexonApiClient nexonApiClient;
 
+    /**
+     * 없는 캐릭터명이면 400 OPENAPI00004 가 온다(2026-10-01 확인). 기록이 없을 때와 같은 코드라 단계로 구분한다.
+     *
+     * @throws CharacterNotFoundException 그 이름의 캐릭터가 없을 때
+     */
     @Cacheable(cacheNames = CacheNames.OCID, key = "#characterName.value()")
     public String resolve(CharacterName characterName) {
-        return nexonApiClient.findOcid(characterName.value());
+        try {
+            return nexonApiClient.findOcid(characterName.value());
+        } catch (NexonApiException e) {
+            if (e.isClientError()) {
+                throw new CharacterNotFoundException(characterName.value());
+            }
+            throw e;
+        }
     }
 }

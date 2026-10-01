@@ -142,7 +142,7 @@
 
 ## 7. 현재 구현 상태 (1단계 어댑터·캐시 + 조회 화면)
 
-> `./gradlew build` 통과(테스트 138개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
+> `./gradlew build` 통과(테스트 143개). 조회 화면, 쿨타임 표, 단일·비교·통계 진단은 실제 기록(칼리 B 4기, 칼리 A 1기·4기, 칼리 랭커 4기 표본 11개)으로 확인했다.
 
 ```
 com.battlecoach
@@ -211,6 +211,7 @@ com.battlecoach
   - JS: `static/js/charts.js`(공통: 점유율·타임라인·비교 타임라인 차트, `window.BattleCoachCharts`) + `replay-detail.js` / `compare.js`
 - **비교 풀 (2026-10-01)**: "비교 대상 대비"는 **같은 직업·기간으로 저장된 모든 기록**(사용자 검색으로 쌓인다)에서 비교 대상을 고른다. 기간마다 랭커를 따로 모을 필요가 없다. 랭커 수집기와 `ranker_sample`·`ranker_probe` 테이블은 없앴다(V2).
   - `ComparisonPoolLoader`(`comparisonPool` 캐시 10분): `replay` ⨝ `replay_period`로 같은 직업·기간 기록을 분석 컨텍스트로 읽는다. 진단 대상 기록은 뺀다.
+  - **캐시 비우기**: 리플레이를 저장·갱신·삭제하면 `StoredReplayChangedEvent`(기록 ID, 직업, 기간)를 발행하고, `ComparisonCacheEvictor`가 커밋 뒤 그 직업·기간의 풀 캐시와 통계 캐시 전체를 비운다. 비우지 않으면 기록 모음의 직업별 개수(DB를 바로 셈)와 표(풀 캐시)가 10분 동안 어긋난다(2026-10-01 실제로 렌 4개 / 표 2개).
   - `ComparisonCriteria(basis, topPercent)`: 기준은 `DPS` 또는 `EFFICIENCY`(전투력 대비 DPS), 범위는 상위 10/25/50/100%. 기본값은 DPS 상위 50%. 상세 화면 `?basis=&top=`.
   - `ComparisonSampleSelector`: 순위를 매길 수 있는 기록 수 × N%를 올림한 개수(최소 1). 전투력 대비 기준은 추세선이 없으면(전투력 있는 기록 5개 미만) 아무것도 고르지 않는다.
   - **추세선(`EfficiencyModel`)은 고른 표본이 아니라 풀 전체로 적합한다.** 상위 N%로만 적합하면 스펙 범위가 좁아져 내 기록이 범위 밖으로 나간다. 풀 안의 기록 순위는 범위 검사 없는 `sampleEfficiencyOf`로 매긴다.
@@ -271,8 +272,8 @@ com.battlecoach
   - 패키지 전용(package-private) `@Component` 클래스와 `@Transactional` 프록시
 - [ ] 실제 API 호출로 확인한다.
   - battle-practice 경로가 맞는지
-  - 존재하지 않는 캐릭터명일 때의 오류 코드와 상태
-  - 기록이 없는 캐릭터일 때의 응답(빈 목록인지 오류인지)
+  - [x] 존재하지 않는 캐릭터명일 때의 오류 코드와 상태 → `/id`가 400 `OPENAPI00004`(2026-10-01 확인)
+  - [x] 기록이 없는 캐릭터일 때의 응답 → `replay-id`가 400 `OPENAPI00004`(빈 목록 아님). 없는 캐릭터와 같은 코드라 **어느 단계에서 났는지로 구분**한다: `OcidResolver`의 4xx → `CharacterNotFoundException`(404 화면 "캐릭터를 찾을 수 없습니다"), `CharacterReplayService`의 4xx → 빈 목록("등록된 연무장 기록이 없습니다").
   - 재등록 시 `replay_id`가 바뀌는지
 - [ ] 필요하면 시전 기록 약 700행 INSERT를 JdbcTemplate 배치로 바꾼다(IDENTITY라 JPA 배치가 안 됨).
 
@@ -280,7 +281,7 @@ com.battlecoach
 - [x] 닉네임 검색 → 기간별 기록 목록
 - [x] 기록 상세: 결과 요약, 스킬 점유율 차트(상위 20개 + 기타), 타임라인 차트(시퀀스 구간 음영, 오리진/어센트 색 구분, Ctrl+휠 확대)
 - [x] 실제 기록이 있는 캐릭터로 확인하고 `SequenceSegment.MAX_GAP_MS` 검증 (칼리 2명, 각 6회로 정확히 분리)
-- [ ] 기록 없음(400 `OPENAPI00004`)을 오류 대신 "기록 없음"으로 보여줄지 결정 (위 4장 참고)
+- [x] 기록 없음(400 `OPENAPI00004`)은 오류 대신 "기록 없음"으로 보여준다 (위 0) 항목)
 - 시간 밀집도 기반 극딜 구간 탐지(`BurstDetector`)는 3) 단일 진단에서 한다.
 
 ### 2) 스킬 스펙 파서와 쿨 계산

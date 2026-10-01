@@ -7,7 +7,7 @@
     <p class="eyebrow">Replay Board</p>
     <h1><span th:text="${characterName}">캐릭터</span> <span class="muted">연무장 기록</span></h1>
 
-    <p th:if="${#lists.isEmpty(replays)}" class="empty">등록된 연무장 기록이 없습니다.</p>
+    <p th:if="${#lists.isEmpty(replays)}" class="empty">등록된 연무장 기록이 없습니다. 기록을 막 등록했다면 API 반영까지 15분쯤 걸립니다.</p>
 
     <table th:unless="${#lists.isEmpty(replays)}" class="table">
         <thead>

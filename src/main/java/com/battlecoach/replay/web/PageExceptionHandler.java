@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.battlecoach.nexon.NexonApiException;
+import com.battlecoach.replay.application.CharacterNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,6 +20,11 @@ public class PageExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ModelAndView handleIllegalArgument(IllegalArgumentException e) {
         return errorPage(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(CharacterNotFoundException.class)
+    public ModelAndView handleCharacterNotFound(CharacterNotFoundException e) {
+        return errorPage(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(NexonApiException.class)

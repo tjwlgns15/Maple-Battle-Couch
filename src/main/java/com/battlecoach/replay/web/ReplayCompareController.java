@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.battlecoach.diagnosis.domain.BurstWindow;
 import com.battlecoach.replay.application.CharacterClassResolver;
+import com.battlecoach.replay.application.CharacterNotFoundException;
 import com.battlecoach.replay.application.CharacterReplayService;
 import com.battlecoach.replay.application.ReplayComparisonService;
 import com.battlecoach.replay.application.ReplayQueryService;
@@ -46,9 +47,16 @@ public class ReplayCompareController {
 
         // 다른 캐릭터면 현재 직업을 먼저 확인한다(1건). 다른 직업이면 기록 목록을 부르지 않는다.
         if (!targetName.value().equals(baseReplay.characterName())) {
-            String targetClass = characterClassResolver.resolve(targetName);
+            String targetClass;
+            try {
+                targetClass = characterClassResolver.resolve(targetName);
+            } catch (CharacterNotFoundException e) {
+                model.addAttribute("notice", e.getMessage());
+                model.addAttribute("candidates", List.of());
+                return "compare-select";
+            }
             if (!targetClass.equals(baseReplay.characterClass())) {
-                model.addAttribute("classMismatch", "같은 직업끼리만 비교할 수 있습니다. "
+                model.addAttribute("notice", "같은 직업끼리만 비교할 수 있습니다. "
                         + targetName.value() + "의 직업은 " + targetClass + "입니다.");
                 model.addAttribute("candidates", List.of());
                 return "compare-select";
